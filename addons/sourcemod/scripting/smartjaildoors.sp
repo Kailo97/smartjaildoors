@@ -98,6 +98,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 public void OnPluginStart()
 {
 	LoadTranslations("smartjaildoors.phrases");
+	LoadTranslations("common.phrases");
 	
 	kv = new KeyValues("smartjaildoors");
 	kv.ImportFromFile(DATAFILE);
@@ -412,8 +413,11 @@ void ShowConfirmMenu(int client, ConfirmMenuHandler handler, any data = 0, const
 		VFormat(buffer, sizeof(buffer), title, 5);
 		menu.SetTitle(buffer);
 	}
-	menu.AddItem("yes", "Yes");
-	menu.AddItem("no", "No");
+	char buffer[128];
+	Format(buffer, sizeof(buffer), "%t", "Yes");
+	menu.AddItem("yes", buffer);
+	Format(buffer, sizeof(buffer), "%t", "No");
+	menu.AddItem("no", buffer);
 	MenuDataPasser[client] = new DataPack();
 	WritePackFunction(MenuDataPasser[client], handler);
 	if (data != 0) {
