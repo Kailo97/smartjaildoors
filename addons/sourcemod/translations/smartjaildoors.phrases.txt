@@ -1,0 +1,217 @@
+// © Maxim "Kailo" Telezhenko, 2015
+// 
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+// 
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+// 
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>
+
+"Phrases"
+{
+	// Chat phrases
+	"Can not open"
+	{
+		"#format"		"{1:t}"
+		"en"			"Can't open: {1}"
+	}
+	
+	"Can not close"
+	{
+		"#format"		"{1:t}"
+		"en"			"Can't close: {1}"
+	}
+	
+	"Can not toggle"
+	{
+		"#format"		"{1:t}"
+		"en"			"Can't toggle: {1}"
+	}
+	
+	"No doors" // also used in menu
+	{
+		"en"			"No doors in map config."
+	}
+	
+	"Invalid entity class for close"
+	{
+		"#format"		"{1:s}"
+		"en"			"'{1}' can't be closed."
+	}
+	
+	"Invalid entity class for toggle"
+	{
+		"#format"		"{1:s}"
+		"en"			"'{1}' can't be toggled."
+	}
+	
+	"Can not use SJD then dead"
+	{
+		"en"			"You can't use SJD then you are dead."
+	}
+	
+	"SJD menu denied - dead"
+	{
+		"en"			"You can't open SJD menu if you are dead."
+	}
+	
+	"SJD menu denied - already opened"
+	{
+		"en"			"Only one player can access menu in the same time."
+	}
+	
+	"Save door denied - not found"
+	{
+		"en"			"Entity not found."
+	}
+	
+	"Save door denied - unsupported"
+	{
+		"en"			"Unsupported entity class."
+	}
+	
+	"Save door denied - no name"
+	{
+		"en"			"Entity don't have name."
+	}
+	
+	"Door saved"
+	{
+		"#format"		"{1:s}"
+		"en"			"Door {1} saved in config."
+	}
+	
+	"Door deleted"
+	{
+		"#format"		"{1:s}"
+		"en"			"{1} door was deleted."
+	}
+	
+	"Button saved"
+	{
+		"#format"		"{1:d}"
+		"en"			"Button saved in config with index {1}."
+	}
+	
+	"Button deleted"
+	{
+		"#format"		"{1:d}"
+		"en"			"Button {1} was deleted."
+	}
+	
+	// Menu phrases
+	"Doors"
+	{
+		"en"			"Doors"
+	}
+	
+	"Test"
+	{
+		"en"			"Test"
+	}
+	
+	"Buttons"
+	{
+		"en"			"Buttons"
+	}
+	
+	// Doors section
+	"Doors title"
+	{
+		"en"			"Doors management"
+	}
+	
+	"Save door"
+	{
+		"en"			"Save viewied entity"
+	}
+	
+	"Delete door"
+	{
+		"en"			"Delete door"
+	}
+	
+	// Test section
+	"Test title"
+	{
+		"en"			"Testing doors"
+	}
+	
+	"Test open"
+	{
+		"en"			"Open"
+	}
+	
+	"Test close"
+	{
+		"en"			"Close"
+	}
+	
+	"Test toggle"
+	{
+		"en"			"Toggle"
+	}
+	
+	// Buttons section
+	"Buttons title"
+	{
+		"en"			"Buttons management"
+	}
+	
+	"Save button"
+	{
+		"en"			"Save button on the ghost position"
+	}
+	
+	"No buttons"
+	{
+		"en"			"No buttons in map config."
+	}
+	
+	"Button item"
+	{
+		"#format"		"{1:d}"
+		"en"			"button {1}"
+	}
+	
+	"Button index"
+	{
+		"#format"		"{1:d}"
+		"en"			"Index: {1}"
+	}
+	
+	"Delete button"
+	{
+		"en"			"Delete button"
+	}
+	
+	// Confirm menus phrases - needed only if plugin compiled with #define CONFIRM_MENUS
+	"Confirm save door"
+	{
+		"#format"		"{1:s}"
+		"en"			"Do you want save {1} door?"
+	}
+	
+	"Confirm delete door"
+	{
+		"#format"		"{1:s}"
+		"en"			"Do you want delete {1} door?"
+	}
+	
+	"Confirm save button"
+	{
+		"en"			"Do you want to save this position?"
+	}
+	
+	"Confirm delete button"
+	{
+		"#format"		"{1:d}"
+		"en"			"Do you want delete {1} button?"
+	}
+}
