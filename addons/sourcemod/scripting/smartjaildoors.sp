@@ -106,6 +106,7 @@ public void OnPluginStart()
 		g_kv.ExportToFile(DATAFILE);
 	
 	RegAdminCmd("sm_sjd", Command_SJDMenu, ADMFLAG_ROOT);
+	RegAdminCmd("sm_sjddebug", Command_SJDDebug, ADMFLAG_ROOT);
 	
 	HookEvent("round_start", OnRoundStart, EventHookMode_PostNoCopy);
 	HookEvent("round_end", OnRoundEnd, EventHookMode_PostNoCopy);
@@ -1210,3 +1211,57 @@ public int Native_SJD_ToggleDoors(Handle plugin, int numParams)
 	ToggleDoorsOnMap(true);
 }
 //** End Native functions **//
+
+//** Debug section **//
+public Action Command_SJDDebug(int client, int args)
+{
+	PrintToChat(client, CHAT_PATTERN, "See console for output");
+	
+	PrintToConsole(client, "** Smart Jail Doors debug info **");
+	
+	if (CheckMapsWithNoDoorsCfg(client))
+		PrintToConsole(client, "Debuger not found errors.");
+	
+	return Plugin_Handled;
+}
+
+// return false if exist maps with no doors cfg, true if all maps have doors cfg
+bool CheckMapsWithNoDoorsCfg(int client)
+{
+	bool allconfigured = true;
+	
+	ArrayList MapList = new ArrayList(32);
+	ReadMapList(MapList);
+	
+	int mapCount = MapList.Length, mapsWithNoCfg[256];
+	char mapName[32];
+	for (int i = 0; i < mapCount; i++)
+	{
+		MapList.GetString(i, mapName, sizeof(mapName));
+		
+		if (!g_kv.JumpToKey(mapName)) {
+			mapsWithNoCfg[mapsWithNoCfg[0]++] = i;
+			allconfigured = false;
+		} else {
+			if (!g_kv.JumpToKey("doors")) {
+				mapsWithNoCfg[mapsWithNoCfg[0]++] = i;
+				allconfigured = false;
+			}
+			
+			g_kv.Rewind();
+		}
+	}
+	
+	if (!allconfigured) {
+		PrintToConsole(client, "Not configured maps:");
+		for (int i = 1; i <= mapsWithNoCfg[0]; i++) {
+			MapList.GetString(i, mapName, sizeof(mapName));
+			PrintToConsole(client, "%s", mapName);
+		}
+	}
+	
+	delete MapList;
+	
+	return allconfigured;
+}
+//** End Debug section **//
