@@ -27,7 +27,7 @@ public Plugin myinfo =
 	name = "Smart Jail Doors",
 	author = "Maxim 'Kailo' Telezhenko",
 	description = "Core API for actions with doors on Jail Break servers. Custom jail's doors buttons.",
-	version = "0.1.0-beta",
+	version = "0.2.0-beta",
 	url = "http://steamcommunity.com/id/kailo97/"
 };
 
@@ -190,10 +190,8 @@ void InputToDoor(const char[] name, const char[] clsname, const char[] input)
 			GetEntityClassname(i, entclsname, sizeof(entclsname));
 			if (StrEqual(clsname, entclsname)) {
 				GetEntityName(i, entname, sizeof(entname));
-				if (StrEqual(name, entname)) {
-					doors[doors[0]+1] = i;
-					doors[0]++;
-				}
+				if (StrEqual(name, entname))
+					doors[doors[0]++] = i;
 			}
 		}
 	}
@@ -337,12 +335,10 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 						if (g_kv.GotoFirstSubKey()) {
 							char buffer[8];
 							g_kv.GetSectionName(buffer, sizeof(buffer));
-							buttons[buttons[0]+1] = StringToInt(buffer);
-							buttons[0]++;
+							buttons[buttons[0]++] = StringToInt(buffer);
 							while(g_kv.GotoNextKey()) {
 								g_kv.GetSectionName(buffer, sizeof(buffer));
-								buttons[buttons[0]+1] = StringToInt(buffer);
-								buttons[0]++;
+								buttons[buttons[0]++] = StringToInt(buffer);
 							}
 							g_kv.Rewind();
 						} else
@@ -497,12 +493,10 @@ int SaveButton(float origin[3])
 	if (g_kv.GotoFirstSubKey()) {
 		char buffer[8];
 		g_kv.GetSectionName(buffer, sizeof(buffer));
-		buttons[buttons[0]+1] = StringToInt(buffer);
-		buttons[0]++;
+		buttons[buttons[0]++] = StringToInt(buffer);
 		while(g_kv.GotoNextKey()) {
 			g_kv.GetSectionName(buffer, sizeof(buffer));
-			buttons[buttons[0]+1] = StringToInt(buffer);
-			buttons[0]++;
+			buttons[buttons[0]++] = StringToInt(buffer);
 		}
 		g_kv.GoBack();
 	}
