@@ -13,6 +13,10 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>
 
+#define PLUGIN_VERSION "0.2.1-beta"
+// Changelog:
+// Loops cleanup.
+
 #include <sdktools>
 #include <topmenus>
 
@@ -27,7 +31,7 @@ public Plugin myinfo =
 	name = "Smart Jail Doors",
 	author = "Maxim 'Kailo' Telezhenko",
 	description = "Core API for actions with doors on Jail Break servers. Custom jail's doors buttons.",
-	version = "0.2.0-beta",
+	version = PLUGIN_VERSION,
 	url = "http://steamcommunity.com/id/kailo97/"
 };
 
@@ -163,8 +167,8 @@ bool ExecuteDoors(DoorHandler handler, any data = 0)
 		return false;
 	}
 	
+	char name[64], clsname[64];
 	do {
-		char name[64], clsname[64];
 		int result;
 		g_kv.GetSectionName(name, sizeof(name));
 		g_kv.GetString("class", clsname, sizeof(clsname));
@@ -501,9 +505,8 @@ int SaveButton(float origin[3])
 		g_kv.GoBack();
 	}
 	int buttonid;
-	while (SaveButtonHelper(buttonid, buttons)) {
+	while (SaveButtonHelper(buttonid, buttons))
 		buttonid++;
-	}
 	
 	char sectionname[8];
 	Format(sectionname, sizeof(sectionname), "%d", buttonid);
@@ -541,10 +544,10 @@ bool ExecuteButtons(ButtonHandler handler, any data = 0)
 		return false;
 	}
 	
+	char buffer[8];
+	float origin[3];
+	int result;
 	do {
-		char buffer[8];
-		float origin[3];
-		int result;
 		g_kv.GetSectionName(buffer, sizeof(buffer));
 		g_kv.GetVector("pos", origin);
 		Call_StartFunction(null, handler);
@@ -580,7 +583,6 @@ void SpawnButton(int buttonid)
 void CreateButton(int buttonid, const float origin[3])
 {
 	int button = CreateEntityByName("prop_dynamic_glow");
-	DispatchKeyValue(button, "targetname", "sjdbuttons"); // devpoint1
 	DispatchKeyValue(button, "model", "models/kzmod/buttons/standing_button.mdl");
 	DispatchKeyValue(button, "solid", "6");
 	DispatchKeyValue(button, "glowcolor", "255 0 0");
