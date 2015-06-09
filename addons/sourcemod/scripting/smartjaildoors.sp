@@ -149,8 +149,14 @@ bool ExecuteDoors(DoorHandler handler, any data = 0)
 	char mapname[64];
 	GetCurrentMap(mapname, sizeof(mapname));
 
-	g_kv.JumpToKey(mapname, true);
-	g_kv.JumpToKey("doors", true);
+	if (!g_kv.JumpToKey(mapname))
+		return false;
+	
+	if (!g_kv.JumpToKey("doors")) {
+		g_kv.Rewind();
+		return false;
+	}
+	
 	if (!g_kv.GotoFirstSubKey()) {
 		g_kv.Rewind();
 		return false;
@@ -177,12 +183,11 @@ bool ExecuteDoors(DoorHandler handler, any data = 0)
 void InputToDoor(const char[] name, const char[] clsname, const char[] input)
 {
 	int doors[128], MaxEntities = GetMaxEntities();
+	char entclsname[64], entname[64];
 	for (int i=MaxClients+1;i<MaxEntities;i++) {
 		if (IsValidEntity(i)) {
-			char entclsname[64];
 			GetEntityClassname(i, entclsname, sizeof(entclsname));
 			if (StrEqual(clsname, entclsname)) {
-				char entname[64];
 				GetEntityName(i, entname, sizeof(entname));
 				if (StrEqual(name, entname)) {
 					doors[doors[0]+1] = i;
@@ -325,49 +330,52 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 				char mapname[64];
 				GetCurrentMap(mapname, sizeof(mapname));
 				
-				g_kv.JumpToKey(mapname, true);
-				g_kv.JumpToKey("buttons", true);
-				
-				int buttons[2048];
-				if (g_kv.GotoFirstSubKey()) {
-					char buffer[8];
-					g_kv.GetSectionName(buffer, sizeof(buffer));
-					buttons[buttons[0]+1] = StringToInt(buffer);
-					buttons[0]++;
-					while(g_kv.GotoNextKey()) {
-						g_kv.GetSectionName(buffer, sizeof(buffer));
-						buttons[buttons[0]+1] = StringToInt(buffer);
-						buttons[0]++;
-					}
-					g_kv.Rewind();
-				}
-				
-				bool Isbutton;
-				int buttonid;
-				for (int i=1;i<=buttons[0];i++)
-					if (g_buttonindex[buttons[i]] == target) {
-						Isbutton = true;
-						buttonid = buttons[i];
-						break;
-					}
-				
-				if (Isbutton) {
-					g_kv.JumpToKey(mapname);
-					g_kv.JumpToKey("buttons");
-					char buffer[64];
-					Format(buffer, sizeof(buffer), "%d", buttonid);
-					g_kv.JumpToKey(buffer);
-					float buttonpos[3];
-					g_kv.GetVector("pos", buttonpos);
-					g_kv.Rewind();
-					
-					buttonpos[2] = buttonpos[2] + 52.2;
-					
-					float origin[3];
-					GetClientEyePosition(client, origin);
-					float distance = DistanceBetweenPoints(buttonpos, origin);
-					if (distance <= BUTTON_USE)
-						OnPressButton();
+				if (g_kv.JumpToKey(mapname)) {
+					if (g_kv.JumpToKey("buttons")) {
+						int buttons[2048];
+						if (g_kv.GotoFirstSubKey()) {
+							char buffer[8];
+							g_kv.GetSectionName(buffer, sizeof(buffer));
+							buttons[buttons[0]+1] = StringToInt(buffer);
+							buttons[0]++;
+							while(g_kv.GotoNextKey()) {
+								g_kv.GetSectionName(buffer, sizeof(buffer));
+								buttons[buttons[0]+1] = StringToInt(buffer);
+								buttons[0]++;
+							}
+							g_kv.Rewind();
+						} else
+							g_kv.Rewind();
+						
+						bool Isbutton;
+						int buttonid;
+						for (int i=1;i<=buttons[0];i++)
+							if (g_buttonindex[buttons[i]] == target) {
+								Isbutton = true;
+								buttonid = buttons[i];
+								break;
+							}
+						
+						if (Isbutton) {
+							g_kv.JumpToKey(mapname);
+							g_kv.JumpToKey("buttons");
+							char buffer[64];
+							Format(buffer, sizeof(buffer), "%d", buttonid);
+							g_kv.JumpToKey(buffer);
+							float buttonpos[3];
+							g_kv.GetVector("pos", buttonpos);
+							g_kv.Rewind();
+							
+							buttonpos[2] = buttonpos[2] + 52.2;
+							
+							float origin[3];
+							GetClientEyePosition(client, origin);
+							float distance = DistanceBetweenPoints(buttonpos, origin);
+							if (distance <= BUTTON_USE)
+								OnPressButton();
+						}
+					} else
+						g_kv.Rewind();
 				}
 			}
 		}
@@ -381,8 +389,13 @@ bool HaveButtonsInCfg()
 	char mapname[64];
 	GetCurrentMap(mapname, sizeof(mapname));
 	
-	g_kv.JumpToKey(mapname, true);
-	g_kv.JumpToKey("buttons", true);
+	if (!g_kv.JumpToKey(mapname))
+		return false;
+	
+	if (g_kv.JumpToKey("buttons")) {
+		g_kv.Rewind();
+		return false;
+	}
 	
 	bool result;
 	
@@ -520,8 +533,13 @@ bool ExecuteButtons(ButtonHandler handler, any data = 0)
 	char mapname[64];
 	GetCurrentMap(mapname, sizeof(mapname));
 	
-	g_kv.JumpToKey(mapname, true);
-	g_kv.JumpToKey("buttons", true);
+	if (!g_kv.JumpToKey(mapname))
+		return false;
+	
+	if (!g_kv.JumpToKey("buttons")) {
+		g_kv.Rewind();
+		return false;
+	}
 	
 	if (!g_kv.GotoFirstSubKey()) {
 		g_kv.Rewind();
