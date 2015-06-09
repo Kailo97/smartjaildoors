@@ -187,6 +187,7 @@ bool ExecuteDoors(DoorHandler handler, any data = 0)
 
 void InputToDoor(const char[] name, const char[] clsname, const char[] input)
 {
+	
 	int doors[128], MaxEntities = GetMaxEntities();
 	char entclsname[64], entname[64];
 	for (int i=MaxClients+1;i<MaxEntities;i++) {
@@ -194,8 +195,9 @@ void InputToDoor(const char[] name, const char[] clsname, const char[] input)
 			GetEntityClassname(i, entclsname, sizeof(entclsname));
 			if (StrEqual(clsname, entclsname)) {
 				GetEntityName(i, entname, sizeof(entname));
-				if (StrEqual(name, entname))
-					doors[doors[0]++] = i;
+				if (StrEqual(name, entname)) {
+					doors[++doors[0]] = i;
+				}
 			}
 		}
 	}
@@ -339,10 +341,10 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 						if (g_kv.GotoFirstSubKey()) {
 							char buffer[8];
 							g_kv.GetSectionName(buffer, sizeof(buffer));
-							buttons[buttons[0]++] = StringToInt(buffer);
+							buttons[++buttons[0]] = StringToInt(buffer);
 							while(g_kv.GotoNextKey()) {
 								g_kv.GetSectionName(buffer, sizeof(buffer));
-								buttons[buttons[0]++] = StringToInt(buffer);
+								buttons[++buttons[0]] = StringToInt(buffer);
 							}
 							g_kv.Rewind();
 						} else
@@ -372,7 +374,7 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 							float origin[3];
 							GetClientEyePosition(client, origin);
 							float distance = DistanceBetweenPoints(buttonpos, origin);
-							if (distance <= BUTTON_USE)
+							if (distance <= BUTTON_USE) 
 								OnPressButton();
 						}
 					} else
@@ -393,7 +395,7 @@ bool HaveButtonsInCfg()
 	if (!g_kv.JumpToKey(mapname))
 		return false;
 	
-	if (g_kv.JumpToKey("buttons")) {
+	if (!g_kv.JumpToKey("buttons")) {
 		g_kv.Rewind();
 		return false;
 	}
@@ -497,10 +499,10 @@ int SaveButton(float origin[3])
 	if (g_kv.GotoFirstSubKey()) {
 		char buffer[8];
 		g_kv.GetSectionName(buffer, sizeof(buffer));
-		buttons[buttons[0]++] = StringToInt(buffer);
+		buttons[++buttons[0]] = StringToInt(buffer);
 		while(g_kv.GotoNextKey()) {
 			g_kv.GetSectionName(buffer, sizeof(buffer));
-			buttons[buttons[0]++] = StringToInt(buffer);
+			buttons[++buttons[0]] = StringToInt(buffer);
 		}
 		g_kv.GoBack();
 	}
@@ -1236,11 +1238,11 @@ bool CheckMapsWithNoDoorsCfg(int client)
 		MapList.GetString(i, mapName, sizeof(mapName));
 		
 		if (!g_kv.JumpToKey(mapName)) {
-			mapsWithNoCfg[mapsWithNoCfg[0]++] = i;
+			mapsWithNoCfg[++mapsWithNoCfg[0]] = i;
 			allconfigured = false;
 		} else {
 			if (!g_kv.JumpToKey("doors")) {
-				mapsWithNoCfg[mapsWithNoCfg[0]++] = i;
+				mapsWithNoCfg[++mapsWithNoCfg[0]] = i;
 				allconfigured = false;
 			}
 			
