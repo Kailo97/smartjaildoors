@@ -40,7 +40,7 @@ public Plugin myinfo =
 // Distance before button for active
 #define BUTTON_USE		64.0
 
-KeyValues kv;
+KeyValues g_kv;
 
 typeset DoorHandler
 {
@@ -61,7 +61,7 @@ typedef ConfirmMenuHandler = function void (int client, bool result, any data);
 #endif
 
 #if defined CONFIRM_MENUS
-DataPack MenuDataPasser[MAXPLAYERS+1];
+DataPack g_MenuDataPasser[MAXPLAYERS+1];
 #endif
 
 int g_buttonindex[2048];
@@ -72,7 +72,7 @@ Menu g_SJDMenu2;
 int g_ghostbutton;
 bool g_ghostbuttonsave;
 float g_ghostbuttonpos[3];
-int oldButtons[MAXPLAYERS]; 
+int g_oldButtons[MAXPLAYERS];
 
 //Downloadable files
 char downloadablefiles[][] = {
@@ -100,10 +100,10 @@ public void OnPluginStart()
 	LoadTranslations("smartjaildoors.phrases");
 	LoadTranslations("common.phrases");
 	
-	kv = new KeyValues("smartjaildoors");
-	kv.ImportFromFile(DATAFILE);
+	g_kv = new KeyValues("smartjaildoors");
+	g_kv.ImportFromFile(DATAFILE);
 	if (!FileExists(DATAFILE))
-		kv.ExportToFile(DATAFILE);
+		g_kv.ExportToFile(DATAFILE);
 	
 	RegAdminCmd("sm_sjd", Command_SJDMenu, ADMFLAG_ROOT);
 	
@@ -116,8 +116,8 @@ public void OnPluginStart()
 
 public void OnPluginEnd()
 {
-	kv.ExportToFile(DATAFILE);
-	delete kv;
+	g_kv.ExportToFile(DATAFILE);
+	delete g_kv;
 }
 
 public Action ShowLookAt(Handle timer)
@@ -149,27 +149,27 @@ bool ExecuteDoors(DoorHandler handler, any data = 0)
 	char mapname[64];
 	GetCurrentMap(mapname, sizeof(mapname));
 
-	kv.JumpToKey(mapname, true);
-	kv.JumpToKey("doors", true);
-	if (!kv.GotoFirstSubKey()) {
-		kv.Rewind();
+	g_kv.JumpToKey(mapname, true);
+	g_kv.JumpToKey("doors", true);
+	if (!g_kv.GotoFirstSubKey()) {
+		g_kv.Rewind();
 		return false;
 	}
 	
 	do {
 		char name[64], clsname[64];
 		int result;
-		kv.GetSectionName(name, sizeof(name));
-		kv.GetString("class", clsname, sizeof(clsname));
+		g_kv.GetSectionName(name, sizeof(name));
+		g_kv.GetString("class", clsname, sizeof(clsname));
 		Call_StartFunction(null, handler);
 		Call_PushString(name);
 		Call_PushString(clsname);
 		if (data != 0)
 			Call_PushCell(data);
 		Call_Finish(result);
-	} while (kv.GotoNextKey());
+	} while (g_kv.GotoNextKey());
 	
-	kv.Rewind();
+	g_kv.Rewind();
 	
 	return true;
 }
@@ -206,12 +206,12 @@ void DeleteDoor(const char[] name)
 {
 	char mapname[64];
 	GetCurrentMap(mapname, sizeof(mapname));
-	kv.JumpToKey(mapname);
-	kv.JumpToKey("doors");
-	kv.JumpToKey(name);
-	kv.DeleteThis();
-	kv.Rewind();
-	kv.ExportToFile(DATAFILE);
+	g_kv.JumpToKey(mapname);
+	g_kv.JumpToKey("doors");
+	g_kv.JumpToKey(name);
+	g_kv.DeleteThis();
+	g_kv.Rewind();
+	g_kv.ExportToFile(DATAFILE);
 }
 
 void SaveDoor(int entity)
@@ -223,12 +223,12 @@ void SaveDoor(int entity)
 	char mapname[64];
 	GetCurrentMap(mapname, sizeof(mapname));
 	
-	kv.JumpToKey(mapname, true);
-	kv.JumpToKey("doors", true);
-	kv.JumpToKey(name, true);
-	kv.SetString("class", clsname);
-	kv.Rewind();
-	kv.ExportToFile(DATAFILE);
+	g_kv.JumpToKey(mapname, true);
+	g_kv.JumpToKey("doors", true);
+	g_kv.JumpToKey(name, true);
+	g_kv.SetString("class", clsname);
+	g_kv.Rewind();
+	g_kv.ExportToFile(DATAFILE);
 }
 
 void ToggleDoorsOnMap(bool bynative = false)
@@ -317,7 +317,7 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 			TeleportEntity(g_ghostbutton, origin, NULL_VECTOR, NULL_VECTOR);
 	}
 	
-	if (f_buttons & IN_USE == IN_USE && oldButtons[client] & IN_USE != IN_USE)
+	if (f_buttons & IN_USE == IN_USE && g_oldButtons[client] & IN_USE != IN_USE)
 	{
 		if (HaveButtonsInCfg()) {
 			int target = GetClientAimTarget(client, false);
@@ -325,21 +325,21 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 				char mapname[64];
 				GetCurrentMap(mapname, sizeof(mapname));
 				
-				kv.JumpToKey(mapname, true);
-				kv.JumpToKey("buttons", true);
+				g_kv.JumpToKey(mapname, true);
+				g_kv.JumpToKey("buttons", true);
 				
 				int buttons[2048];
-				if (kv.GotoFirstSubKey()) {
+				if (g_kv.GotoFirstSubKey()) {
 					char buffer[8];
-					kv.GetSectionName(buffer, sizeof(buffer));
+					g_kv.GetSectionName(buffer, sizeof(buffer));
 					buttons[buttons[0]+1] = StringToInt(buffer);
 					buttons[0]++;
-					while(kv.GotoNextKey()) {
-						kv.GetSectionName(buffer, sizeof(buffer));
+					while(g_kv.GotoNextKey()) {
+						g_kv.GetSectionName(buffer, sizeof(buffer));
 						buttons[buttons[0]+1] = StringToInt(buffer);
 						buttons[0]++;
 					}
-					kv.Rewind();
+					g_kv.Rewind();
 				}
 				
 				bool Isbutton;
@@ -352,14 +352,14 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 					}
 				
 				if (Isbutton) {
-					kv.JumpToKey(mapname);
-					kv.JumpToKey("buttons");
+					g_kv.JumpToKey(mapname);
+					g_kv.JumpToKey("buttons");
 					char buffer[64];
 					Format(buffer, sizeof(buffer), "%d", buttonid);
-					kv.JumpToKey(buffer);
+					g_kv.JumpToKey(buffer);
 					float buttonpos[3];
-					kv.GetVector("pos", buttonpos);
-					kv.Rewind();
+					g_kv.GetVector("pos", buttonpos);
+					g_kv.Rewind();
 					
 					buttonpos[2] = buttonpos[2] + 52.2;
 					
@@ -373,7 +373,7 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 		}
 	}
 	
-	oldButtons[client] = f_buttons;
+	g_oldButtons[client] = f_buttons;
 }
 
 bool HaveButtonsInCfg()
@@ -381,15 +381,15 @@ bool HaveButtonsInCfg()
 	char mapname[64];
 	GetCurrentMap(mapname, sizeof(mapname));
 	
-	kv.JumpToKey(mapname, true);
-	kv.JumpToKey("buttons", true);
+	g_kv.JumpToKey(mapname, true);
+	g_kv.JumpToKey("buttons", true);
 	
 	bool result;
 	
-	if (kv.GotoFirstSubKey())
+	if (g_kv.GotoFirstSubKey())
 		result = true;
 	
-	kv.Rewind();
+	g_kv.Rewind();
 	
 	return result;
 }
@@ -418,14 +418,14 @@ void ShowConfirmMenu(int client, ConfirmMenuHandler handler, any data = 0, const
 	menu.AddItem("yes", buffer);
 	Format(buffer, sizeof(buffer), "%t", "No");
 	menu.AddItem("no", buffer);
-	MenuDataPasser[client] = new DataPack();
-	WritePackFunction(MenuDataPasser[client], handler);
+	g_MenuDataPasser[client] = new DataPack();
+	WritePackFunction(g_MenuDataPasser[client], handler);
 	if (data != 0) {
-		WritePackCell(MenuDataPasser[client], true);
-		WritePackCell(MenuDataPasser[client], data);
+		WritePackCell(g_MenuDataPasser[client], true);
+		WritePackCell(g_MenuDataPasser[client], data);
 	} else
-		WritePackCell(MenuDataPasser[client], false);
-	ResetPack(MenuDataPasser[client]);
+		WritePackCell(g_MenuDataPasser[client], false);
+	ResetPack(g_MenuDataPasser[client]);
 	menu.ExitButton = false;
 	g_SJDMenu2 = menu;
 	menu.Display(client, 5);
@@ -437,22 +437,22 @@ public int ConfirmMenu(Menu menu, MenuAction action, int param1, int param2)
 		case MenuAction_Select: {
 			char info[16];
 			menu.GetItem(param2, info, sizeof(info));
-			ConfirmMenuHandler handler = view_as<ConfirmMenuHandler>(ReadPackFunction(MenuDataPasser[param1]));
+			ConfirmMenuHandler handler = view_as<ConfirmMenuHandler>(ReadPackFunction(g_MenuDataPasser[param1]));
 			any data;
-			if (ReadPackCell(MenuDataPasser[param1]))
-				data = ReadPackCell(MenuDataPasser[param1]);
-			delete MenuDataPasser[param1];
+			if (ReadPackCell(g_MenuDataPasser[param1]))
+				data = ReadPackCell(g_MenuDataPasser[param1]);
+			delete g_MenuDataPasser[param1];
 			if (StrEqual(info, "yes"))
 				ExecuteConfirmMenuHandler(param1, handler, true, data);
 			else
 				ExecuteConfirmMenuHandler(param1, handler, false, data);
 		}
 		case MenuAction_Cancel: {
-			ConfirmMenuHandler handler = view_as<ConfirmMenuHandler>(ReadPackFunction(MenuDataPasser[param1]));
+			ConfirmMenuHandler handler = view_as<ConfirmMenuHandler>(ReadPackFunction(g_MenuDataPasser[param1]));
 			any data;
-			if (ReadPackCell(MenuDataPasser[param1]))
-				data = ReadPackCell(MenuDataPasser[param1]);
-			delete MenuDataPasser[param1];
+			if (ReadPackCell(g_MenuDataPasser[param1]))
+				data = ReadPackCell(g_MenuDataPasser[param1]);
+			delete g_MenuDataPasser[param1];
 			ExecuteConfirmMenuHandler(param1, handler, false, data);
 		}
 		case MenuAction_End: delete menu;
@@ -476,21 +476,21 @@ int SaveButton(float origin[3])
 	char mapname[64];
 	GetCurrentMap(mapname, sizeof(mapname));
 	
-	kv.JumpToKey(mapname, true);
-	kv.JumpToKey("buttons", true);
+	g_kv.JumpToKey(mapname, true);
+	g_kv.JumpToKey("buttons", true);
 	
 	int buttons[2048];
-	if (kv.GotoFirstSubKey()) {
+	if (g_kv.GotoFirstSubKey()) {
 		char buffer[8];
-		kv.GetSectionName(buffer, sizeof(buffer));
+		g_kv.GetSectionName(buffer, sizeof(buffer));
 		buttons[buttons[0]+1] = StringToInt(buffer);
 		buttons[0]++;
-		while(kv.GotoNextKey()) {
-			kv.GetSectionName(buffer, sizeof(buffer));
+		while(g_kv.GotoNextKey()) {
+			g_kv.GetSectionName(buffer, sizeof(buffer));
 			buttons[buttons[0]+1] = StringToInt(buffer);
 			buttons[0]++;
 		}
-		kv.GoBack();
+		g_kv.GoBack();
 	}
 	int buttonid;
 	while (SaveButtonHelper(buttonid, buttons)) {
@@ -499,10 +499,10 @@ int SaveButton(float origin[3])
 	
 	char sectionname[8];
 	Format(sectionname, sizeof(sectionname), "%d", buttonid);
-	kv.JumpToKey(sectionname, true);
-	kv.SetVector("pos", origin);
-	kv.Rewind();
-	kv.ExportToFile(DATAFILE);
+	g_kv.JumpToKey(sectionname, true);
+	g_kv.SetVector("pos", origin);
+	g_kv.Rewind();
+	g_kv.ExportToFile(DATAFILE);
 	
 	return buttonid;
 }
@@ -520,11 +520,11 @@ bool ExecuteButtons(ButtonHandler handler, any data = 0)
 	char mapname[64];
 	GetCurrentMap(mapname, sizeof(mapname));
 	
-	kv.JumpToKey(mapname, true);
-	kv.JumpToKey("buttons", true);
+	g_kv.JumpToKey(mapname, true);
+	g_kv.JumpToKey("buttons", true);
 	
-	if (!kv.GotoFirstSubKey()) {
-		kv.Rewind();
+	if (!g_kv.GotoFirstSubKey()) {
+		g_kv.Rewind();
 		return false;
 	}
 	
@@ -532,17 +532,17 @@ bool ExecuteButtons(ButtonHandler handler, any data = 0)
 		char buffer[8];
 		float origin[3];
 		int result;
-		kv.GetSectionName(buffer, sizeof(buffer));
-		kv.GetVector("pos", origin);
+		g_kv.GetSectionName(buffer, sizeof(buffer));
+		g_kv.GetVector("pos", origin);
 		Call_StartFunction(null, handler);
 		Call_PushCell(StringToInt(buffer));
 		Call_PushArray(origin, 3);
 		if (data != 0)
 			Call_PushCell(data);
 		Call_Finish(result);
-	} while (kv.GotoNextKey());
+	} while (g_kv.GotoNextKey());
 	
-	kv.Rewind();
+	g_kv.Rewind();
 	
 	return true;
 }
@@ -552,15 +552,15 @@ void SpawnButton(int buttonid)
 	char mapname[64];
 	GetCurrentMap(mapname, sizeof(mapname));
 	
-	kv.JumpToKey(mapname);
-	kv.JumpToKey("buttons");
+	g_kv.JumpToKey(mapname);
+	g_kv.JumpToKey("buttons");
 	
 	char buffer[16];
 	Format(buffer, sizeof(buffer), "%d", buttonid);
-	kv.JumpToKey(buffer);
+	g_kv.JumpToKey(buffer);
 	float origin[3];
-	kv.GetVector("pos", origin);
-	kv.Rewind();
+	g_kv.GetVector("pos", origin);
+	g_kv.Rewind();
 	CreateButton(buttonid, origin);
 }
 
@@ -604,7 +604,7 @@ public void OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
 
 public void OnClientDisconnect(int client)
 {
-	oldButtons[client] = 0;
+	g_oldButtons[client] = 0;
 	
 	if (client == g_sjdclient) {
 		CloseSJDMenu();
@@ -625,14 +625,14 @@ void RemoveButton(int buttonid)
 	
 	char mapname[64];
 	GetCurrentMap(mapname, sizeof(mapname));
-	kv.JumpToKey(mapname);
-	kv.JumpToKey("buttons");
+	g_kv.JumpToKey(mapname);
+	g_kv.JumpToKey("buttons");
 	char buffer[16];
 	Format(buffer, sizeof(buffer), "%d", buttonid);
-	kv.JumpToKey(buffer);
-	kv.DeleteThis();
-	kv.Rewind();
-	kv.ExportToFile(DATAFILE);
+	g_kv.JumpToKey(buffer);
+	g_kv.DeleteThis();
+	g_kv.Rewind();
+	g_kv.ExportToFile(DATAFILE);
 }
 
 void OpenDoorsOnMap(bool bynative = false)
@@ -833,11 +833,11 @@ void SJDMenu2_ShowDoorItemMenu(int client, const char[] name)
 {
 	char clsname[64], mapname[64];
 	GetCurrentMap(mapname, sizeof(mapname));
-	kv.JumpToKey(mapname);
-	kv.JumpToKey("doors");
-	kv.JumpToKey(name);
-	kv.GetString("class", clsname, sizeof(clsname));
-	kv.Rewind();
+	g_kv.JumpToKey(mapname);
+	g_kv.JumpToKey("doors");
+	g_kv.JumpToKey(name);
+	g_kv.GetString("class", clsname, sizeof(clsname));
+	g_kv.Rewind();
 	
 	Menu menu = new Menu(SJDMenu2_DoorItemMenu);
 	char buffer[64];
