@@ -13,9 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>
 
-#define PLUGIN_VERSION "0.2.1-beta"
-// Changelog:
-// Loops cleanup.
+#define PLUGIN_VERSION "0.3.0-beta"
 
 #include <sdktools>
 #include <topmenus>
@@ -25,6 +23,7 @@
 
 //Compile defines
 #define CONFIRM_MENUS
+#define NEW_USE_LOGIC
 
 public Plugin myinfo =
 {
@@ -43,6 +42,11 @@ public Plugin myinfo =
 
 // Distance before button for active
 #define BUTTON_USE		64.0
+
+#define BUTTON_HEIGHT	52.2
+
+//Distance from button top as radius sphere where u can use button
+#define USE_AREA		15.0
 
 KeyValues g_kv;
 
@@ -93,6 +97,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("SJD_OpenDoors", Native_SJD_OpenDoors);
 	CreateNative("SJD_CloseDoors", Native_SJD_CloseDoors);
 	CreateNative("SJD_ToggleDoors", Native_SJD_ToggleDoors);
+	CreateNative("SJD_IsMapConfigured", Native_SJD_IsMapConfigured);
 	
 	RegPluginLibrary("smartjaildoors");
 	
@@ -169,7 +174,6 @@ bool ExecuteDoors(DoorHandler handler, any data = 0)
 	
 	char name[64], clsname[64];
 	do {
-		int result;
 		g_kv.GetSectionName(name, sizeof(name));
 		g_kv.GetString("class", clsname, sizeof(clsname));
 		Call_StartFunction(null, handler);
@@ -177,7 +181,7 @@ bool ExecuteDoors(DoorHandler handler, any data = 0)
 		Call_PushString(clsname);
 		if (data != 0)
 			Call_PushCell(data);
-		Call_Finish(result);
+		Call_Finish();
 	} while (g_kv.GotoNextKey());
 	
 	g_kv.Rewind();
@@ -220,6 +224,8 @@ void DeleteDoor(const char[] name)
 	g_kv.JumpToKey("doors");
 	g_kv.JumpToKey(name);
 	g_kv.DeleteThis();
+	if (!g_kv.GotoFirstSubKey())
+		g_kv.DeleteThis();
 	g_kv.Rewind();
 	g_kv.ExportToFile(DATAFILE);
 }
@@ -329,6 +335,55 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 	
 	if (f_buttons & IN_USE == IN_USE && g_oldButtons[client] & IN_USE != IN_USE)
 	{
+#if defined NEW_USE_LOGIC
+		if (HaveButtonsInCfg()) {
+			char mapName[64];
+			GetCurrentMap(mapName, sizeof(mapName));
+			if (IsMapConfigured(mapName)) {
+				g_kv.JumpToKey(mapName);
+				g_kv.JumpToKey("buttons");
+				g_kv.GotoFirstSubKey();
+				
+				int counter;
+				float buttonPos[2048][3];
+				do
+					g_kv.GetVector("pos", buttonPos[counter++]);
+				while (g_kv.GotoNextKey());
+				
+				g_kv.Rewind();
+				
+				for (int i = 0; i < counter; i++)
+					buttonPos[i][2] += BUTTON_HEIGHT;
+				
+				float ang[3];
+				GetClientEyeAngles(client, ang);
+				float vec[3];
+				GetAngleVectors(ang, vec, NULL_VECTOR, NULL_VECTOR);
+				float eyePos[3];
+				GetClientEyePosition(client, eyePos);
+				
+				float temp_vec[3], temp_pos[3];
+				bool used;
+				for (float i = 0.0; i <= BUTTON_USE; i++) {
+					temp_vec = vec;
+					ScaleVector(temp_vec, i);
+					temp_pos = eyePos;
+					for (int i2 = 0; i2 < sizeof(eyePos); i2++)
+						temp_pos[i2] += temp_vec[i2];
+					
+					for (int i2 = 0; i2 < counter; i2++)
+						if (DistanceBetweenPoints(buttonPos[i2], temp_pos) <=  USE_AREA) {
+							used = true;
+							OnPressButton();
+							break;
+						}
+					
+					if (used)
+						break;
+				}
+			}
+		}
+#else
 		if (HaveButtonsInCfg()) {
 			int target = GetClientAimTarget(client, false);
 			if (target != -1) {
@@ -369,7 +424,7 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 							g_kv.GetVector("pos", buttonpos);
 							g_kv.Rewind();
 							
-							buttonpos[2] = buttonpos[2] + 52.2;
+							buttonpos[2] = buttonpos[2] + BUTTON_HEIGHT;
 							
 							float origin[3];
 							GetClientEyePosition(client, origin);
@@ -382,6 +437,7 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 				}
 			}
 		}
+#endif
 	}
 	
 	g_oldButtons[client] = f_buttons;
@@ -477,13 +533,12 @@ public int ConfirmMenu(Menu menu, MenuAction action, int param1, int param2)
 
 void ExecuteConfirmMenuHandler(int client, ConfirmMenuHandler handler, bool result, any data = 0)
 {
-	int callresult;
 	Call_StartFunction(null, handler);
 	Call_PushCell(client);
 	Call_PushCell(result);
 	if (data != 0)
 		Call_PushCell(data);
-	Call_Finish(callresult);
+	Call_Finish();
 }
 #endif
 
@@ -548,7 +603,6 @@ bool ExecuteButtons(ButtonHandler handler, any data = 0)
 	
 	char buffer[8];
 	float origin[3];
-	int result;
 	do {
 		g_kv.GetSectionName(buffer, sizeof(buffer));
 		g_kv.GetVector("pos", origin);
@@ -557,7 +611,7 @@ bool ExecuteButtons(ButtonHandler handler, any data = 0)
 		Call_PushArray(origin, 3);
 		if (data != 0)
 			Call_PushCell(data);
-		Call_Finish(result);
+		Call_Finish();
 	} while (g_kv.GotoNextKey());
 	
 	g_kv.Rewind();
@@ -696,6 +750,20 @@ public void CloseDoor(const char[] name, const char[] clsname, any data)
 		if (!Pack.ReadCell())
 			PrintToChat(g_sjdclient, CHAT_PATTERN, "Can not close", "Invalid entity class for close", clsname);
 	}
+}
+
+bool IsMapConfigured(const char[] mapName)
+{
+	if (!g_kv.JumpToKey(mapName))
+		return false;
+	
+	if (!g_kv.JumpToKey("doors")) {
+		g_kv.Rewind();
+		return false;
+	}
+	
+	g_kv.Rewind();
+	return true;
 }
 
 //** Menu Section **//
@@ -1208,6 +1276,20 @@ public int Native_SJD_ToggleDoors(Handle plugin, int numParams)
 {
 	ToggleDoorsOnMap(true);
 }
+
+public int Native_SJD_IsMapConfigured(Handle plugin, int numParams)
+{
+	int len;
+	GetNativeStringLength(1, len);
+	
+	if (len <= 0)
+		return view_as<int>(false);
+	
+	char[] mapName = new char[len + 1];
+	GetNativeString(1, mapName, len + 1);
+	
+	return view_as<int>(IsMapConfigured(mapName));
+}
 //** End Native functions **//
 
 //** Debug section **//
@@ -1237,23 +1319,16 @@ bool CheckMapsWithNoDoorsCfg(int client)
 	{
 		MapList.GetString(i, mapName, sizeof(mapName));
 		
-		if (!g_kv.JumpToKey(mapName)) {
+		if (!IsMapConfigured(mapName)) {
 			mapsWithNoCfg[++mapsWithNoCfg[0]] = i;
 			allconfigured = false;
-		} else {
-			if (!g_kv.JumpToKey("doors")) {
-				mapsWithNoCfg[++mapsWithNoCfg[0]] = i;
-				allconfigured = false;
-			}
-			
-			g_kv.Rewind();
 		}
 	}
 	
 	if (!allconfigured) {
 		PrintToConsole(client, "Not configured maps:");
 		for (int i = 1; i <= mapsWithNoCfg[0]; i++) {
-			MapList.GetString(i, mapName, sizeof(mapName));
+			MapList.GetString(mapsWithNoCfg[i], mapName, sizeof(mapName));
 			PrintToConsole(client, "%s", mapName);
 		}
 	}

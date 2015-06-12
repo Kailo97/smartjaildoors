@@ -1,0 +1,6 @@
+v0.3.0-beta
+Reworked use logic (now more like source engine).
+Add 'SJD_IsMapConfigured' native.
+Fix bug in 'IsMapConfigured' logic.
+Fix bug in 'CheckMapsWithNoDoorsCfg' logic.
+Loops cleanup.

@@ -39,6 +39,14 @@ native void SJD_CloseDoors();
  */
 native void SJD_ToggleDoors();
 
+/**
+ * Check if exist doors config for said map.
+ *
+ * @param num2    String with map name for check.
+ * @return
+ */
+native bool SJD_IsMapConfigured(const char[] mapName);
+
 public SharedPlugin:__pl_smartjaildoors = 
 {
 	name = "smartjaildoors",
@@ -56,5 +64,6 @@ public __pl_smartjaildoors_SetNTVOptional()
 	MarkNativeAsOptional("SJD_OpenDoors");
 	MarkNativeAsOptional("SJD_CloseDoors");
 	MarkNativeAsOptional("SJD_ToggleDoors");
+	MarkNativeAsOptional("SJD_IsMapConfigured");
 }
 #endif
