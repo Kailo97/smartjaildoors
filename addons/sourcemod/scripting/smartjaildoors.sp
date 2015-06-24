@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>
 
-#define PLUGIN_VERSION "0.3.0-beta"
+#define PLUGIN_VERSION "0.4.0-beta"
 
 #include <sdktools>
 #include <topmenus>
@@ -97,6 +97,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 	CreateNative("SJD_OpenDoors", Native_SJD_OpenDoors);
 	CreateNative("SJD_CloseDoors", Native_SJD_CloseDoors);
 	CreateNative("SJD_ToggleDoors", Native_SJD_ToggleDoors);
+	CreateNative("SJD_ToggleExDoors", Native_SJD_ToggleExDoors);
 	CreateNative("SJD_IsMapConfigured", Native_SJD_IsMapConfigured);
 	
 	RegPluginLibrary("smartjaildoors");
@@ -138,7 +139,7 @@ public Action ShowLookAt(Handle timer)
 		//Format(buffer, sizeof(buffer), "%t", "Save door"); // devpoint2
 		if (target == -1) {
 			//g_SJDMenu2.InsertItem(0, "save", buffer, ITEMDRAW_DISABLED); // devpoint2
-			PrintHintText(g_sjdclient, "Entity not found.");
+			PrintHintText(g_sjdclient, "%t", "Save door denied - not found");
 		} else {
 			//g_SJDMenu2.InsertItem(0, "save", buffer); // devpoint2
 			char clsname[64], name[128];
@@ -263,7 +264,7 @@ public void ToggleDoor(const char[] name, const char[] clsname, any data)
 	if (StrEqual("func_movelinear", clsname)) {
 		InputToDoor(name, clsname, "Open");
 		InputToDoor(name, clsname, "Close");
-	} else if (StrEqual("func_door", clsname) || StrEqual("func_door_rotating", clsname) || StrEqual("prop_door_rotating", clsname)) {
+	} else if (StrEqual("func_door", clsname) || StrEqual("func_door_rotating", clsname) || StrEqual("prop_door_rotating", clsname) || StrEqual("func_wall_toggle", clsname)) {
 		InputToDoor(name, clsname, "Toggle");
 	} else if (StrEqual("func_tracktrain", clsname)) {
 		// Can't toggle 'func_tracktrain' entity class.
@@ -278,17 +279,19 @@ public void ToggleDoor(const char[] name, const char[] clsname, any data)
 	}
 }
 
-void OnPressButton()
+void ToggleExDoorsOnMap(bool bynative = false)
 {
-	ExecuteDoors(PressButton);
+	if (!ExecuteDoors(ToggleDoorEx))
+		if (!bynative)
+			PrintToChat(g_sjdclient, CHAT_PATTERN, "Can not toggle", "No doors");
 }
 
-public void PressButton(const char[] name, const char[] clsname)
+public void ToggleDoorEx(const char[] name, const char[] clsname)
 {
 	if (StrEqual("func_movelinear", clsname)) {
 		InputToDoor(name, clsname, "Open");
 		InputToDoor(name, clsname, "Close");
-	} else if (StrEqual("func_door", clsname) || StrEqual("func_door_rotating", clsname) || StrEqual("prop_door_rotating", clsname)) {
+	} else if (StrEqual("func_door", clsname) || StrEqual("func_door_rotating", clsname) || StrEqual("prop_door_rotating", clsname) || StrEqual("func_wall_toggle", clsname)) {
 		InputToDoor(name, clsname, "Toggle");
 	} else if (StrEqual("func_tracktrain", clsname)) {
 		InputToDoor(name, clsname, "StartForward");
@@ -374,7 +377,7 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 					for (int i2 = 0; i2 < counter; i2++)
 						if (DistanceBetweenPoints(buttonPos[i2], temp_pos) <=  USE_AREA) {
 							used = true;
-							OnPressButton();
+							ToggleExDoorsOnMap();
 							break;
 						}
 					
@@ -430,7 +433,7 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 							GetClientEyePosition(client, origin);
 							float distance = DistanceBetweenPoints(buttonpos, origin);
 							if (distance <= BUTTON_USE) 
-								OnPressButton();
+								ToggleExDoorsOnMap();
 						}
 					} else
 						g_kv.Rewind();
@@ -708,19 +711,28 @@ void RemoveButton(int buttonid)
 
 void OpenDoorsOnMap(bool bynative = false)
 {
-	if (!ExecuteDoors(OpenDoor))
+	DataPack Pack = new DataPack();
+	Pack.WriteCell(bynative);
+	if (!ExecuteDoors(OpenDoor, Pack))
 		if (!bynative)
 			PrintToChat(g_sjdclient, CHAT_PATTERN, "Can not open", "No doors");
+	delete Pack;
 }
 
-public void OpenDoor(const char[] name, const char[] clsname)
+public void OpenDoor(const char[] name, const char[] clsname, any data)
 {
+	DataPack Pack = view_as<DataPack>(data);
 	if (StrEqual("func_movelinear", clsname) || StrEqual("func_door", clsname) || StrEqual("func_door_rotating", clsname) || StrEqual("prop_door_rotating", clsname)) {
 		InputToDoor(name, clsname, "Open");
 	} else if (StrEqual("func_tracktrain", clsname)) {
 		InputToDoor(name, clsname, "StartForward");
 	} else if (StrEqual("func_breakable", clsname)) {
 		InputToDoor(name, clsname, "Break");
+	} else if (StrEqual("func_wall_toggle", clsname)) {
+		// Can't open 'func_wall_toggle' entity class.
+		Pack.Reset();
+		if (!Pack.ReadCell())
+			PrintToChat(g_sjdclient, CHAT_PATTERN, "Can not open", "Invalid entity class for open", clsname);
 	}
 }
 
@@ -746,6 +758,11 @@ public void CloseDoor(const char[] name, const char[] clsname, any data)
 			PrintToChat(g_sjdclient, CHAT_PATTERN, "Can not close", "Invalid entity class for close", clsname);
 	} else if (StrEqual("func_breakable", clsname)) {
 		// Can't close 'func_breakable' entity class.
+		Pack.Reset();
+		if (!Pack.ReadCell())
+			PrintToChat(g_sjdclient, CHAT_PATTERN, "Can not close", "Invalid entity class for close", clsname);
+	} else if (StrEqual("func_wall_toggle", clsname)) {
+		// Can't close 'func_wall_toggle' entity class.
 		Pack.Reset();
 		if (!Pack.ReadCell())
 			PrintToChat(g_sjdclient, CHAT_PATTERN, "Can not close", "Invalid entity class for close", clsname);
@@ -862,7 +879,9 @@ public int SJDMenu2_DoorsSubMenu(Menu menu, MenuAction action, int param1, int p
 				} else {
 					char clsname[64];
 					GetEntityClassname(target, clsname, sizeof(clsname));
-					if (!StrEqual("func_movelinear", clsname) && !StrEqual("func_door", clsname) && !StrEqual("func_door_rotating", clsname) && !StrEqual("prop_door_rotating", clsname) && !StrEqual("func_tracktrain", clsname) && !StrEqual("func_breakable", clsname)) {
+					if (!StrEqual("func_movelinear", clsname) && !StrEqual("func_door", clsname) && !StrEqual("func_door_rotating", clsname) &&
+					!StrEqual("prop_door_rotating", clsname) && !StrEqual("func_tracktrain", clsname) &&
+					!StrEqual("func_breakable", clsname) && !StrEqual("func_wall_toggle", clsname)) {
 						PrintToChat(param1, CHAT_PATTERN, "Save door denied - unsupported");
 						SJDMenu2_ShowDoorsSubMenu(param1, true);
 					} else {
@@ -993,6 +1012,8 @@ void SJDMenu2_ShowTestSubMenu(int client)
 	menu.AddItem("close", buffer);
 	Format(buffer, sizeof(buffer), "%t", "Test toggle");
 	menu.AddItem("toggle", buffer);
+	Format(buffer, sizeof(buffer), "%t", "Test toggleex");
+	menu.AddItem("toggleex", buffer);
 	menu.OptionFlags |= MENUFLAG_BUTTON_EXITBACK;
 	g_SJDMenu2 = menu;
 	menu.Display(client, MENU_TIME_FOREVER);
@@ -1010,6 +1031,8 @@ public int SJDMenu2_TestSubMenu(Menu menu, MenuAction action, int param1, int pa
 				CloseDoorsOnMap();
 			} else if (StrEqual(info, "toggle")) {
 				ToggleDoorsOnMap();
+			} else if (StrEqual(info, "toggleex")) {
+				ToggleExDoorsOnMap();
 			}
 			SJDMenu2_ShowTestSubMenu(param1);
 		}
@@ -1124,7 +1147,7 @@ void SJDMenu2_ShowButtonItemMenu(int client, int buttonid)
 	Format(display, sizeof(display), "%t", "Button index", buttonid);
 	menu.AddItem(info, display, ITEMDRAW_DISABLED);
 	Format(display, sizeof(display), "%t", "Delete button");
-	menu.AddItem("delete", "Delete button");
+	menu.AddItem("delete", display);
 	menu.OptionFlags |= MENUFLAG_BUTTON_EXITBACK;
 	g_SJDMenu2 = menu;
 	menu.Display(client, MENU_TIME_FOREVER);
@@ -1275,6 +1298,11 @@ public int Native_SJD_CloseDoors(Handle plugin, int numParams)
 public int Native_SJD_ToggleDoors(Handle plugin, int numParams)
 {
 	ToggleDoorsOnMap(true);
+}
+
+public int Native_SJD_ToggleExDoors(Handle plugin, int numParams)
+{
+	ToggleExDoorsOnMap(true);
 }
 
 public int Native_SJD_IsMapConfigured(Handle plugin, int numParams)

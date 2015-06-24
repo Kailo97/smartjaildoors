@@ -20,175 +20,220 @@
 	{
 		"#format"		"{1:t}"
 		"en"			"Can't open: {1}"
+		"ru"			"Невозможно открыть: {1}"
 	}
 	
 	"Can not close"
 	{
 		"#format"		"{1:t}"
 		"en"			"Can't close: {1}"
+		"ru"			"Невозможно закрыть: {1}"
 	}
 	
 	"Can not toggle"
 	{
 		"#format"		"{1:t}"
 		"en"			"Can't toggle: {1}"
+		"ru"			"Невозможно переключить: {1}"
 	}
 	
 	"No doors" // also used in menu
 	{
 		"en"			"No doors in map config."
+		"ru"			"Карта не сконфигурирована."
 	}
 	
 	"Invalid entity class for close"
 	{
 		"#format"		"{1:s}"
 		"en"			"'{1}' can't be closed."
+		"ru"			"невозможно закрыть дверь класса '{1}'."
 	}
 	
 	"Invalid entity class for toggle"
 	{
 		"#format"		"{1:s}"
 		"en"			"'{1}' can't be toggled."
+		"ru"			"невозможно переключить дверь класса '{1}'."
+	}
+	
+	"Invalid entity class for open"
+	{
+		"#format"		"{1:s}"
+		"en"			"'{1}' can't be opened."
+		"ru"			"невозможно открыть дверь класса '{1}'."
 	}
 	
 	"Can not use SJD then dead"
 	{
 		"en"			"You can't use SJD then you are dead."
+		"ru"			"SJD можно использовать только когда вы живы."
 	}
 	
 	"SJD menu denied - dead"
 	{
 		"en"			"You can't open SJD menu if you are dead."
+		"ru"			"Вы можете открыть SJD меню только когда вы живы."
 	}
 	
 	"SJD menu denied - already opened"
 	{
 		"en"			"Only one player can access menu in the same time."
+		"ru"			"Кто-то уже использует меню."
 	}
 	
 	"Save door denied - not found"
 	{
 		"en"			"Entity not found."
+		"ru"			"Объект не обнаружен."
 	}
 	
 	"Save door denied - unsupported"
 	{
 		"en"			"Unsupported entity class."
+		"ru"			"Неподдерживаемый класс двери."
 	}
 	
 	"Save door denied - no name"
 	{
 		"en"			"Entity don't have name."
+		"ru"			"У объекта нет имени."
 	}
 	
 	"Door saved"
 	{
 		"#format"		"{1:s}"
 		"en"			"Door {1} saved in config."
+		"ru"			"Дверь {1} сохранена в конфиг."
 	}
 	
 	"Door deleted"
 	{
 		"#format"		"{1:s}"
 		"en"			"{1} door was deleted."
+		"ru"			"Дверь {1} удалена из конфига."
 	}
 	
 	"Button saved"
 	{
 		"#format"		"{1:d}"
 		"en"			"Button saved in config with index {1}."
+		"ru"			"Кнопка сохранена в конфиг с индексом {1}."
 	}
 	
 	"Button deleted"
 	{
 		"#format"		"{1:d}"
 		"en"			"Button {1} was deleted."
+		"ru"			"Кнопка {1} удалена из конфига."
 	}
 	
 	// Menu phrases
 	"Doors"
 	{
 		"en"			"Doors"
+		"ru"			"Двери"
 	}
 	
 	"Test"
 	{
 		"en"			"Test"
+		"ru"			"Проверка"
 	}
 	
 	"Buttons"
 	{
 		"en"			"Buttons"
+		"ru"			"Кнопки"
 	}
 	
 	// Doors section
 	"Doors title"
 	{
 		"en"			"Doors management"
+		"ru"			"Управление дверьми"
 	}
 	
 	"Save door"
 	{
 		"en"			"Save viewied entity"
+		"ru"			"Сохранить дверь"
 	}
 	
 	"Delete door"
 	{
 		"en"			"Delete door"
+		"ru"			"Удалить дверь"
 	}
 	
 	// Test section
 	"Test title"
 	{
 		"en"			"Testing doors"
+		"ru"			"Проверка дверей"
 	}
 	
 	"Test open"
 	{
 		"en"			"Open"
+		"ru"			"Открыть"
 	}
 	
 	"Test close"
 	{
 		"en"			"Close"
+		"ru"			"Закрыть"
 	}
 	
 	"Test toggle"
 	{
 		"en"			"Toggle"
+		"ru"			"Переключить"
+	}
+	
+	"Test toggleex"
+	{
+		"en"			"ToggleEx"
+		"ru"			"Переключить доп."
 	}
 	
 	// Buttons section
 	"Buttons title"
 	{
 		"en"			"Buttons management"
+		"ru"			"Управление кнопками"
 	}
 	
 	"Save button"
 	{
 		"en"			"Save button on the ghost position"
+		"ru"			"Сохранить кнопку"
 	}
 	
 	"No buttons"
 	{
 		"en"			"No buttons in map config."
+		"ru"			"На карте нету кнопок."
 	}
 	
 	"Button item"
 	{
 		"#format"		"{1:d}"
 		"en"			"button {1}"
+		"ru"			"Кнопка {1}"
 	}
 	
 	"Button index"
 	{
 		"#format"		"{1:d}"
 		"en"			"Index: {1}"
+		"ru"			"Индекс: {1}"
 	}
 	
 	"Delete button"
 	{
 		"en"			"Delete button"
+		"ru"			"Удалить кнопку"
 	}
 	
 	// Confirm menus phrases - needed only if plugin compiled with #define CONFIRM_MENUS
@@ -196,22 +241,26 @@
 	{
 		"#format"		"{1:s}"
 		"en"			"Do you want save {1} door?"
+		"ru"			"Сохранить дверь {1}?"
 	}
 	
 	"Confirm delete door"
 	{
 		"#format"		"{1:s}"
 		"en"			"Do you want delete {1} door?"
+		"ru"			"Удалить дверь {1}?"
 	}
 	
 	"Confirm save button"
 	{
 		"en"			"Do you want to save this position?"
+		"ru"			"Сохранить кнопку на данной позиции?"
 	}
 	
 	"Confirm delete button"
 	{
 		"#format"		"{1:d}"
 		"en"			"Do you want delete {1} button?"
+		"ru"			"Удалить кнопку {1}?"
 	}
 }

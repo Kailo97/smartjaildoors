@@ -34,15 +34,24 @@ native void SJD_CloseDoors();
 
 /**
  * Toggle jail's doors on current map saved in Smart Jail Doors config.
+ * If door can't be toggled - nothing.
  *
  * @noreturn
  */
 native void SJD_ToggleDoors();
 
 /**
+ * Toggle jail's doors on current map saved in Smart Jail Doors config.
+ * If door can't be toggled - open.
+ *
+ * @noreturn
+ */
+native void SJD_ToggleExDoors();
+
+/**
  * Check if exist doors config for said map.
  *
- * @param num2    String with map name for check.
+ * @param mapName    String with map name for check.
  * @return
  */
 native bool SJD_IsMapConfigured(const char[] mapName);

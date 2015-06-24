@@ -1,6 +1,5 @@
-v0.3.0-beta
-Reworked use logic (now more like source engine).
-Add 'SJD_IsMapConfigured' native.
-Fix bug in 'IsMapConfigured' logic.
-Fix bug in 'CheckMapsWithNoDoorsCfg' logic.
-Loops cleanup.
+v0.4.0-beta
+Added ToogleEx method.
+Added 'SJD_ToggleExDoors' native.
+Added support 'func_wall_toggle' entity class.
+Added Russian translation.
