@@ -56,6 +56,17 @@ native void SJD_ToggleExDoors();
  */
 native bool SJD_IsMapConfigured(const char[] mapName);
 
+/**
+ * Check if exist doors config for current map.
+ */
+stock bool SJD_IsCurrentMapConfigured()
+{
+	char mapName[64];
+	GetCurrentMap(mapName, sizeof(mapName));
+	
+	return SJD_IsMapConfigured(mapName);
+}
+
 public SharedPlugin:__pl_smartjaildoors = 
 {
 	name = "smartjaildoors",
