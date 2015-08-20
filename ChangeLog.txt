@@ -1,5 +1,3 @@
-v0.4.0-beta
-Added ToogleEx method.
-Added 'SJD_ToggleExDoors' native.
-Added support 'func_wall_toggle' entity class.
-Added Russian translation.
+v0.4.1-beta
+Added SJD_IsCurrentMapConfigured stock.
+Fixed case bug.

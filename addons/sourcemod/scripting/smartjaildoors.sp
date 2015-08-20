@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>
 
-#define PLUGIN_VERSION "0.4.0-beta"
+#define PLUGIN_VERSION "0.4.1-beta"
 
 #include <sdktools>
 #include <topmenus>
@@ -200,7 +200,7 @@ void InputToDoor(const char[] name, const char[] clsname, const char[] input)
 			GetEntityClassname(i, entclsname, sizeof(entclsname));
 			if (StrEqual(clsname, entclsname)) {
 				GetEntityName(i, entname, sizeof(entname));
-				if (StrEqual(name, entname)) {
+				if (StrEqual(name, entname, false)) {
 					doors[++doors[0]] = i;
 				}
 			}
