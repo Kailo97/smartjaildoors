@@ -1,1 +1,4 @@
-Add use sound for buttons.
+Add 'only open' mode setting for map.
+Add OnOpenDoor forward (In progress).
+Add OnCloseDoor forward (In progress).
+Add Lock/Unlock doors.

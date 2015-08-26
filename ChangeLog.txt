@@ -1,3 +1,13 @@
-v0.4.1-beta
-Added SJD_IsCurrentMapConfigured stock.
-Fixed case bug.
+v0.5.0-beta
+Added use sound for buttons.
+Added cvar sjd_buttons_sound_enable (def. "1") — "Sound switch".
+Added cvar sjd_buttons_sound (def. "buttons/button3.wav") — "Sound file".
+Added glow for buttons.
+Added cvar sjd_buttons_glow (def. "0") — "Glow switch".
+Added cvar sjd_buttons_glow_color (def. "0 150 0") — "Glow color".
+Added handmode - for save entities with nodrow, noclip and etc. textures. You can't target them by aiming.
+Added sm_sjdhm cmd. See description above.
+Added handemode menu for test and save entities.
+Fixed bug with translate in menus.
+Format replace to FormatEx.
+Fixed plugin reload process (Auto close menu, remove buttons from map).

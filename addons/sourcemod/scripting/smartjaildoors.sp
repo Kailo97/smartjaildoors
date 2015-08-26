@@ -13,10 +13,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>
 
-#define PLUGIN_VERSION "0.4.1-beta"
+#define PLUGIN_VERSION "0.5.0-beta"
 
 #include <sdktools>
 #include <topmenus>
+#include <cstrike>
 
 #pragma newdecls required
 #pragma semicolon 1
@@ -24,6 +25,8 @@
 //Compile defines
 #define CONFIRM_MENUS
 #define NEW_USE_LOGIC
+#define HAND_MODE
+//#define DOOR_HOOKS
 
 public Plugin myinfo =
 {
@@ -34,19 +37,16 @@ public Plugin myinfo =
 	url = "http://steamcommunity.com/id/kailo97/"
 };
 
-// Path to config save. May be in future do ConVar.
-#define DATAFILE		"smartjaildoors.txt"
+#define DATAFILE		"smartjaildoors.txt" // Path to config save. May be in future do ConVar.
 
-// Pattern for all plugin's msgs in chat. If you want replace tag - edit this. (no support colors tags)
-#define CHAT_PATTERN	"[SJD] %t"
+#define CHAT_PATTERN	"[SJD] %t" // Pattern for all plugin's msgs in chat. If you want replace tag - edit this. (no support colors tags)
 
-// Distance before button for active
-#define BUTTON_USE		64.0
-
-#define BUTTON_HEIGHT	52.2
-
-//Distance from button top as radius sphere where u can use button
-#define USE_AREA		15.0
+#define BUTTON_USE		64.0 // Distance before button for active
+#define BUTTON_HEIGHT	52.2 // Button settings
+#define USE_AREA		15.0 // Distance from button top as radius sphere where u can use button
+#define BUTTON_USE_SOUND "buttons/button3.wav" // Default button use sound
+#define BUTTON_GLOW_COLOR "0 150 0" // Default color for glow - green
+#define BUTTON_CHOOSEN_GLOW_COLOR "255 0 0" // Defailt color for glow then choosen - red
 
 KeyValues g_kv;
 
@@ -81,6 +81,12 @@ int g_ghostbutton;
 bool g_ghostbuttonsave;
 float g_ghostbuttonpos[3];
 int g_oldButtons[MAXPLAYERS];
+
+ConVar cv_sjd_buttons_sound_enable;
+ConVar cv_sjd_buttons_sound;
+ConVar cv_sjd_buttons_glow;
+ConVar cv_sjd_buttons_glow_color;
+ConVar cv_sjd_buttons_filter;
 
 //Downloadable files
 char downloadablefiles[][] = {
@@ -117,16 +123,40 @@ public void OnPluginStart()
 	
 	RegAdminCmd("sm_sjd", Command_SJDMenu, ADMFLAG_ROOT);
 	RegAdminCmd("sm_sjddebug", Command_SJDDebug, ADMFLAG_ROOT);
+	#if defined HAND_MODE
+	RegAdminCmd("sm_sjdhm", Command_Handmode, ADMFLAG_ROOT);
+	#endif
 	
 	HookEvent("round_start", OnRoundStart, EventHookMode_PostNoCopy);
 	HookEvent("round_end", OnRoundEnd, EventHookMode_PostNoCopy);
 	HookEvent("player_death", OnPlayerDeath);
 	
 	CreateTimer(0.1, ShowLookAt, _, TIMER_REPEAT);
+	
+	cv_sjd_buttons_sound_enable = CreateConVar("sjd_buttons_sound_enable", "1", "Sound switch", _, true, 0.0, true, 1.0);
+	cv_sjd_buttons_sound = CreateConVar("sjd_buttons_sound", BUTTON_USE_SOUND, "Sound file");
+	cv_sjd_buttons_glow = CreateConVar("sjd_buttons_glow", "0", "Glow switch", _, true, 0.0, true, 1.0);
+	cv_sjd_buttons_glow.AddChangeHook(ConVarChanged);
+	cv_sjd_buttons_glow_color = CreateConVar("sjd_buttons_glow_color", BUTTON_GLOW_COLOR, "Glow color");
+	cv_sjd_buttons_glow_color.AddChangeHook(ConVarChanged);
+	cv_sjd_buttons_filter = CreateConVar("sjd_buttons_filter", "0", "If 0 all can use buttons, if 1 only CT can use buttons", _, true, 0.0, true, 1.0);
+	
+	ExecuteButtons(SpawnButtonsOnRoundStart);
 }
 
 public void OnPluginEnd()
 {
+	if (g_sjdclient != 0) {
+		CloseSJDMenu();
+		delete g_SJDMenu2;
+	}
+	
+	for (int i = 0; i < sizeof(g_buttonindex); i++)
+		if (g_buttonindex[i])
+			AcceptEntityInput(g_buttonindex[i], "Kill");
+		else
+			break;
+	
 	g_kv.ExportToFile(DATAFILE);
 	delete g_kv;
 }
@@ -136,7 +166,7 @@ public Action ShowLookAt(Handle timer)
 	if (g_sjdlookat) {
 		int target = GetClientAimTarget(g_sjdclient, false);
 		//char buffer[128]; // devpoint2 - don't work
-		//Format(buffer, sizeof(buffer), "%t", "Save door"); // devpoint2
+		//FormatEx(buffer, sizeof(buffer), "%t", "Save door"); // devpoint2
 		if (target == -1) {
 			//g_SJDMenu2.InsertItem(0, "save", buffer, ITEMDRAW_DISABLED); // devpoint2
 			PrintHintText(g_sjdclient, "%t", "Save door denied - not found");
@@ -147,6 +177,34 @@ public Action ShowLookAt(Handle timer)
 			GetEntityName(target, name, sizeof(name));
 			PrintHintText(g_sjdclient, "%s (%d): %s", clsname, target, name);
 		}
+	}
+}
+
+public void ConVarChanged(ConVar convar, const char[] oldValue, const char[] newValue)
+{
+	char cvarname[64];
+	convar.GetName(cvarname, sizeof(cvarname));
+	if (StrEqual("sjd_buttons_glow", cvarname)) {
+		for (int i = 0; i < sizeof(g_buttonindex); i++)
+			if (g_buttonindex[i] != 0) {
+				if (g_buttonindex[i] != g_glowedbutton)
+					if (StringToInt(newValue)) {
+						SetDefaultGlowColor(g_buttonindex[i]);
+						AcceptEntityInput(g_buttonindex[i], "SetGlowEnabled");
+					} else {
+						AcceptEntityInput(g_buttonindex[i], "SetGlowDisabled");
+						SetGlowColor(g_buttonindex[i], BUTTON_CHOOSEN_GLOW_COLOR);
+					}
+			} else
+				break;
+	} else if (StrEqual("sjd_buttons_glow_color", cvarname)) {
+		if (cv_sjd_buttons_glow.BoolValue)
+			for (int i = 0; i < sizeof(g_buttonindex); i++)
+				if (g_buttonindex[i] != 0) {
+					if (g_buttonindex[i] != g_glowedbutton)
+						SetDefaultGlowColor(g_buttonindex[i]);
+				} else
+					break;
 	}
 }
 
@@ -231,12 +289,16 @@ void DeleteDoor(const char[] name)
 	g_kv.ExportToFile(DATAFILE);
 }
 
-void SaveDoor(int entity)
+void SaveDoorByEnt(int entity)
 {
 	char clsname[64], name[128];
 	GetEntityClassname(entity, clsname, sizeof(clsname));
 	GetEntityName(entity, name, sizeof(name));
-	
+	SaveDoor(name, clsname);
+}
+
+void SaveDoor(const char[] name, const char[] clsname)
+{
 	char mapname[64];
 	GetCurrentMap(mapname, sizeof(mapname));
 	
@@ -303,10 +365,33 @@ public void ToggleDoorEx(const char[] name, const char[] clsname)
 public void OnMapStart()
 {
 	PrecacheModel("models/kzmod/buttons/standing_button.mdl");
-	
+
 	for (int i=0;i<sizeof(downloadablefiles);i++)
 		AddFileToDownloadsTable(downloadablefiles[i]);
+
+	if (!IsSoundPrecached(BUTTON_USE_SOUND))
+		PrecacheSound(BUTTON_USE_SOUND);
+	#if defined DOOR_HOOKS
+	ExecuteDoors(AddDoorHooks);
+	#endif
 }
+
+#if defined DOOR_HOOKS
+public void AddDoorHooks(const char[] name, const char[] clsname)
+{
+	HookDoorAction(name, clsname);
+}
+
+public void OnMapEnd()
+{
+	ExecuteDoors(RemoveDoorHooks);
+}
+
+public void RemoveDoorHooks(const char[] name, const char[] clsname)
+{
+	UnhookDoorAction(name, clsname);
+}
+#endif
 
 stock void GetAimOrigin(int client, float origin[3])
 {
@@ -339,7 +424,7 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 	if (f_buttons & IN_USE == IN_USE && g_oldButtons[client] & IN_USE != IN_USE)
 	{
 #if defined NEW_USE_LOGIC
-		if (HaveButtonsInCfg()) {
+		if (HaveButtonsInCfg() && cv_sjd_buttons_filter.BoolValue ? (GetClientTeam(client) == CS_TEAM_CT) : true) {
 			char mapName[64];
 			GetCurrentMap(mapName, sizeof(mapName));
 			if (IsMapConfigured(mapName)) {
@@ -378,6 +463,8 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 						if (DistanceBetweenPoints(buttonPos[i2], temp_pos) <=  USE_AREA) {
 							used = true;
 							ToggleExDoorsOnMap();
+							if (cv_sjd_buttons_sound_enable.BoolValue)
+								EmitButtonSound(buttonPos[i2]);
 							break;
 						}
 					
@@ -387,7 +474,7 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 			}
 		}
 #else
-		if (HaveButtonsInCfg()) {
+		if (HaveButtonsInCfg() && cv_sjd_buttons_filter.BoolValue ? (GetClientTeam(client) == CS_TEAM_CT) : true) {
 			int target = GetClientAimTarget(client, false);
 			if (target != -1) {
 				char mapname[64];
@@ -421,7 +508,7 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 							g_kv.JumpToKey(mapname);
 							g_kv.JumpToKey("buttons");
 							char buffer[64];
-							Format(buffer, sizeof(buffer), "%d", buttonid);
+							FormatEx(buffer, sizeof(buffer), "%d", buttonid);
 							g_kv.JumpToKey(buffer);
 							float buttonpos[3];
 							g_kv.GetVector("pos", buttonpos);
@@ -431,9 +518,11 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 							
 							float origin[3];
 							GetClientEyePosition(client, origin);
-							float distance = DistanceBetweenPoints(buttonpos, origin);
-							if (distance <= BUTTON_USE) 
+							if (DistanceBetweenPoints(buttonpos, origin) <= BUTTON_USE) {
 								ToggleExDoorsOnMap();
+								if (cv_sjd_buttons_sound_enable.BoolValue)
+									EmitButtonSound(buttonpos);
+							}
 						}
 					} else
 						g_kv.Rewind();
@@ -482,16 +571,17 @@ bool IsSamePosition(float pos1[3], float pos2[3])
 #if defined CONFIRM_MENUS
 void ShowConfirmMenu(int client, ConfirmMenuHandler handler, any data = 0, const char[] title = "", any ...)
 {
+	SetGlobalTransTarget(client);
 	Menu menu = new Menu(ConfirmMenu);
-	if (strlen(title) != 0) {
+	if (strlen(title)) {
 		char buffer[256];
 		VFormat(buffer, sizeof(buffer), title, 5);
 		menu.SetTitle(buffer);
 	}
 	char buffer[128];
-	Format(buffer, sizeof(buffer), "%t", "Yes");
+	FormatEx(buffer, sizeof(buffer), "%t", "Yes");
 	menu.AddItem("yes", buffer);
-	Format(buffer, sizeof(buffer), "%t", "No");
+	FormatEx(buffer, sizeof(buffer), "%t", "No");
 	menu.AddItem("no", buffer);
 	g_MenuDataPasser[client] = new DataPack();
 	WritePackFunction(g_MenuDataPasser[client], handler);
@@ -569,7 +659,7 @@ int SaveButton(float origin[3])
 		buttonid++;
 	
 	char sectionname[8];
-	Format(sectionname, sizeof(sectionname), "%d", buttonid);
+	FormatEx(sectionname, sizeof(sectionname), "%d", buttonid);
 	g_kv.JumpToKey(sectionname, true);
 	g_kv.SetVector("pos", origin);
 	g_kv.Rewind();
@@ -631,7 +721,7 @@ void SpawnButton(int buttonid)
 	g_kv.JumpToKey("buttons");
 	
 	char buffer[16];
-	Format(buffer, sizeof(buffer), "%d", buttonid);
+	FormatEx(buffer, sizeof(buffer), "%d", buttonid);
 	g_kv.JumpToKey(buffer);
 	float origin[3];
 	g_kv.GetVector("pos", origin);
@@ -644,8 +734,15 @@ void CreateButton(int buttonid, const float origin[3])
 	int button = CreateEntityByName("prop_dynamic_glow");
 	DispatchKeyValue(button, "model", "models/kzmod/buttons/standing_button.mdl");
 	DispatchKeyValue(button, "solid", "6");
-	DispatchKeyValue(button, "glowcolor", "255 0 0");
-	DispatchKeyValue(button, "glowenabled", "0");
+	if (cv_sjd_buttons_glow.BoolValue) {
+		char color[12];
+		cv_sjd_buttons_glow_color.GetString(color, sizeof(color));
+		DispatchKeyValue(button, "glowcolor", color);
+		DispatchKeyValue(button, "glowenabled", "1");
+	} else {
+		DispatchKeyValue(button, "glowcolor", "255 0 0");
+		DispatchKeyValue(button, "glowenabled", "0");
+	}
 	DispatchSpawn(button);
 	TeleportEntity(button, origin, NULL_VECTOR, NULL_VECTOR);
 	g_buttonindex[buttonid] = button;
@@ -702,7 +799,7 @@ void RemoveButton(int buttonid)
 	g_kv.JumpToKey(mapname);
 	g_kv.JumpToKey("buttons");
 	char buffer[16];
-	Format(buffer, sizeof(buffer), "%d", buttonid);
+	FormatEx(buffer, sizeof(buffer), "%d", buttonid);
 	g_kv.JumpToKey(buffer);
 	g_kv.DeleteThis();
 	g_kv.Rewind();
@@ -783,6 +880,187 @@ bool IsMapConfigured(const char[] mapName)
 	return true;
 }
 
+stock void EmitButtonSound(const float pos[3])
+{
+	char sound[256];
+	cv_sjd_buttons_sound.GetString(sound, sizeof(sound));
+	EmitAmbientSound(sound, pos, _, SNDLEVEL_CONVO);
+}
+
+stock void SetGlowColor(int entity, const char[] color)
+{
+	char colorbuffers[3][4];
+	ExplodeString(color, " ", colorbuffers, sizeof(colorbuffers), sizeof(colorbuffers[]));
+	int colors[4];
+	for (int i = 0; i < 3; i++)
+		colors[i] = StringToInt(colorbuffers[i]);
+	colors[3] = 255; // Set alpha
+	SetVariantColor(colors);
+	AcceptEntityInput(entity, "SetGlowColor");
+}
+
+stock void SetDefaultGlowColor(int entity)
+{
+	char color[12];
+	cv_sjd_buttons_glow_color.GetString(color, sizeof(color));
+	SetGlowColor(entity, color);
+}
+
+stock bool DoorClassValidation(const char[] clsname)
+{
+	return (StrEqual("func_movelinear", clsname) || StrEqual("func_door", clsname) || StrEqual("func_door_rotating", clsname)
+			|| StrEqual("prop_door_rotating", clsname) || StrEqual("func_tracktrain", clsname) || StrEqual("func_breakable", clsname)
+			|| StrEqual("func_wall_toggle", clsname));
+}
+
+stock void DoorCmd(DoorHandler handler, const char[] name, const char[] clsname)
+{
+	DataPack Pack = new DataPack();
+	Pack.WriteCell(false);
+	Call_StartFunction(null, handler);
+	Call_PushString(name);
+	Call_PushString(clsname);
+	Call_PushCell(Pack);
+	Call_Finish();
+	delete Pack;
+}
+
+stock int FindFirstNamedEntity(const char[] name)
+{
+	char namebuffer[64];
+	int MaxEntities = GetMaxEntities();
+	for (int i = MaxClients+1; i < MaxEntities; i++)
+		if (IsValidEdict(i)) {
+			GetEntityName(i, namebuffer, sizeof(namebuffer));
+			if (StrEqual(name, namebuffer, false))
+				return i;
+		}
+
+	LogError("FindFirstNamedEntity don't found entity with \"%s\" name.", name);
+
+	return -1;
+}
+
+stock void GetClsnameByName(const char[] name, char[] clsname, int maxlength)
+{
+	char namebuffer[64];
+	int MaxEntities = GetMaxEntities();
+	for (int i = MaxClients+1; i < MaxEntities; i++)
+		if (IsValidEdict(i)) {
+			GetEntityName(i, namebuffer, sizeof(namebuffer));
+			if (StrEqual(name, namebuffer, false)) {
+				GetEntityClassname(i, clsname, maxlength);
+				break;
+			}
+		}
+}
+
+//** Door Hook **//
+#if defined DOOR_HOOKS
+stock void HookDoorOutput(const char[] name, const char[] output, EntityOutput callback)
+{
+	int entity;
+	if ((entity = FindFirstNamedEntity(name)) != -1)
+		HookSingleEntityOutput(entity, output, callback);
+}
+
+stock void UnhookDoorOutput(const char[] name, const char[] output, EntityOutput callback)
+{
+	int entity;
+	if ((entity = FindFirstNamedEntity(name)) != -1)
+		UnhookSingleEntityOutput(entity, output, callback);
+}
+
+stock void HookDoorOpen(const char[] name, const char[] clsname)
+{
+	if (StrEqual("func_door", clsname) || StrEqual("func_door_rotating", clsname) || StrEqual("prop_door_rotating", clsname))
+		HookDoorOutput(name, "OnOpen", OnDoorOpen);
+	else if (StrEqual("func_movelinear", clsname))
+		HookDoorOutput(name, "OnFullyOpen", OnDoorOpen);
+	else if (StrEqual("func_breakable", clsname))
+		HookDoorOutput(name, "OnBreak", OnDoorOpen);
+	// Can't hook:
+	// func_wall_toggle
+	// func_tracktrain
+}
+
+public void OnDoorOpen(const char[] output, int caller, int activator, float delay)
+{
+	PrintToChatAll("OnDoorOpen");
+}
+
+stock void UnhookDoorOpen(const char[] name, const char[] clsname)
+{
+	if (StrEqual("func_door", clsname) || StrEqual("func_door_rotating", clsname) || StrEqual("prop_door_rotating", clsname))
+		UnhookDoorOutput(name, "OnOpen", OnDoorOpen);
+	else if (StrEqual("func_movelinear", clsname))
+		UnhookDoorOutput(name, "OnFullyOpen", OnDoorOpen);
+	else if (StrEqual("func_breakable", clsname))
+		UnhookDoorOutput(name, "OnBreak", OnDoorOpen);
+	// Can't hook:
+	// func_wall_toggle
+	// func_tracktrain
+}
+
+stock void HookDoorClose(const char[] name, const char[] clsname)
+{
+	if (StrEqual("func_door", clsname) || StrEqual("func_door_rotating", clsname) || StrEqual("prop_door_rotating", clsname))
+		HookDoorOutput(name, "OnClose", OnDoorClose);
+	else if (StrEqual("func_movelinear", clsname))
+		HookDoorOutput(name, "OnFullyClosed", OnDoorClose);
+	// Can't hook:
+	// func_wall_toggle
+	// func_tracktrain
+	// func_breakable
+}
+
+public void OnDoorClose(const char[] output, int caller, int activator, float delay)
+{
+	PrintToChatAll("OnDoorClose");
+}
+
+stock void UnhookDoorClose(const char[] name, const char[] clsname)
+{
+	if (StrEqual("func_door", clsname) || StrEqual("func_door_rotating", clsname) || StrEqual("prop_door_rotating", clsname))
+		UnhookDoorOutput(name, "OnClose", OnDoorClose);
+	else if (StrEqual("func_movelinear", clsname))
+		UnhookDoorOutput(name, "OnFullyClosed", OnDoorClose);
+	// Can't hook:
+	// func_wall_toggle
+	// func_tracktrain
+	// func_breakable
+}
+
+stock void HookDoorAction(const char[] name, const char[] clsname)
+{
+	HookDoorOpen(name, clsname);
+	HookDoorClose(name, clsname);
+}
+
+stock void HookDoorActionEx(const char[] name)
+{
+	char clsname[64];
+	GetClsnameByName(name, clsname, sizeof(clsname));
+	HookDoorOpen(name, clsname);
+	HookDoorClose(name, clsname);
+}
+
+stock void UnhookDoorAction(const char[] name, const char[] clsname)
+{
+	UnhookDoorOpen(name, clsname);
+	UnhookDoorClose(name, clsname);
+}
+
+stock void UnhookDoorActionEx(const char[] name)
+{
+	char clsname[64];
+	GetClsnameByName(name, clsname, sizeof(clsname));
+	UnhookDoorOpen(name, clsname);
+	UnhookDoorClose(name, clsname);
+}
+#endif
+//** End Door Hook **//
+
 //** Menu Section **//
 public Action Command_SJDMenu(int client, int args)
 {
@@ -796,6 +1074,7 @@ public Action Command_SJDMenu(int client, int args)
 
 void ShowSJDMenu2(int client)
 {
+	SetGlobalTransTarget(client);
 	if (g_sjdclient != 0 && g_sjdclient != client) {
 		PrintToChat(client, CHAT_PATTERN, "SJD menu denied - already opened");
 		return;
@@ -804,11 +1083,11 @@ void ShowSJDMenu2(int client)
 	Menu menu = new Menu(SJDMenu2);
 	menu.SetTitle("Smart Jail Doors");
 	char buffer[128];
-	Format(buffer, sizeof(buffer), "%t", "Doors");
+	FormatEx(buffer, sizeof(buffer), "%t", "Doors");
 	menu.AddItem("doors", buffer);
-	Format(buffer, sizeof(buffer), "%t", "Test");
+	FormatEx(buffer, sizeof(buffer), "%t", "Test");
 	menu.AddItem("test", buffer);
-	Format(buffer, sizeof(buffer), "%t", "Buttons");
+	FormatEx(buffer, sizeof(buffer), "%t", "Buttons");
 	menu.AddItem("buttons", buffer);
 	g_SJDMenu2 = menu;
 	menu.Display(client, MENU_TIME_FOREVER);
@@ -844,13 +1123,14 @@ public int SJDMenu2(Menu menu, MenuAction action, int param1, int param2)
 
 void SJDMenu2_ShowDoorsSubMenu(int client, bool late = false)
 {
+	SetGlobalTransTarget(client);
 	Menu menu = new Menu(SJDMenu2_DoorsSubMenu);
 	menu.SetTitle("%t", "Doors title");
 	char buffer[128];
-	Format(buffer, sizeof(buffer), "%t", "Save door");
+	FormatEx(buffer, sizeof(buffer), "%t", "Save door");
 	menu.AddItem("save", buffer);
 	if (!ExecuteDoors(SJDMenu2_AddItemsToDoorsSubMenu, menu)) {
-		Format(buffer, sizeof(buffer), "%t", "No doors");
+		FormatEx(buffer, sizeof(buffer), "%t", "No doors");
 		menu.AddItem("nodoors", buffer, ITEMDRAW_DISABLED);
 	}
 	menu.OptionFlags |= MENUFLAG_BUTTON_EXITBACK;
@@ -879,9 +1159,7 @@ public int SJDMenu2_DoorsSubMenu(Menu menu, MenuAction action, int param1, int p
 				} else {
 					char clsname[64];
 					GetEntityClassname(target, clsname, sizeof(clsname));
-					if (!StrEqual("func_movelinear", clsname) && !StrEqual("func_door", clsname) && !StrEqual("func_door_rotating", clsname) &&
-					!StrEqual("prop_door_rotating", clsname) && !StrEqual("func_tracktrain", clsname) &&
-					!StrEqual("func_breakable", clsname) && !StrEqual("func_wall_toggle", clsname)) {
+					if (!DoorClassValidation(clsname)) {
 						PrintToChat(param1, CHAT_PATTERN, "Save door denied - unsupported");
 						SJDMenu2_ShowDoorsSubMenu(param1, true);
 					} else {
@@ -894,7 +1172,10 @@ public int SJDMenu2_DoorsSubMenu(Menu menu, MenuAction action, int param1, int p
 #if defined CONFIRM_MENUS
 							ShowConfirmMenu(param1, SJDMenu2_ConfirmSaveDoor, target, "%t", "Confirm save door", name);
 #else
-							SaveDoor(target);
+							SaveDoorByEnt(target);
+							#if defined DOOR_HOOKS
+							HookDoorActionEx(name);
+							#endif
 							PrintToChat(param1, CHAT_PATTERN, "Door saved", name);
 							SJDMenu2_ShowDoorsSubMenu(param1, true);
 #endif
@@ -922,9 +1203,12 @@ public int SJDMenu2_DoorsSubMenu(Menu menu, MenuAction action, int param1, int p
 public void SJDMenu2_ConfirmSaveDoor(int client, bool result, any entity)
 {
 	if (result) {
-		SaveDoor(entity);
+		SaveDoorByEnt(entity);
 		char name[64];
 		GetEntityName(entity, name, sizeof(name));
+		#if defined DOOR_HOOKS
+		HookDoorActionEx(name);
+		#endif
 		PrintToChat(client, CHAT_PATTERN, "Door saved", name);
 	}
 	
@@ -943,13 +1227,14 @@ void SJDMenu2_ShowDoorItemMenu(int client, const char[] name)
 	g_kv.GetString("class", clsname, sizeof(clsname));
 	g_kv.Rewind();
 	
+	SetGlobalTransTarget(client);
 	Menu menu = new Menu(SJDMenu2_DoorItemMenu);
 	char buffer[64];
-	Format(buffer, sizeof(buffer), "Name: %s", name);
+	FormatEx(buffer, sizeof(buffer), "Name: %s", name);
 	menu.AddItem(name, buffer, ITEMDRAW_DISABLED);
-	Format(buffer, sizeof(buffer), "Class name: %s", clsname);
+	FormatEx(buffer, sizeof(buffer), "Class name: %s", clsname);
 	menu.AddItem(clsname, buffer, ITEMDRAW_DISABLED);
-	Format(buffer, sizeof(buffer), "%t", "Delete door");
+	FormatEx(buffer, sizeof(buffer), "%t", "Delete door");
 	menu.AddItem("delete", buffer);
 	menu.OptionFlags |= MENUFLAG_BUTTON_EXITBACK;
 	g_SJDMenu2 = menu;
@@ -969,6 +1254,9 @@ public int SJDMenu2_DoorItemMenu(Menu menu, MenuAction action, int param1, int p
 			ShowConfirmMenu(param1, SJDMenu2_ConfirmDeleteDoor, Pack, "%t", "Confirm delete door", name);
 #else
 			DeleteDoor(name);
+			#if defined DOOR_HOOKS
+			UnhookDoorActionEx(name);
+			#endif
 			PrintToChat(param1, CHAT_PATTERN, "Door deleted", name);
 			SJDMenu2_ShowDoorsSubMenu(param1);
 #endif
@@ -992,6 +1280,9 @@ public void SJDMenu2_ConfirmDeleteDoor(int client, bool result, any data)
 		char name[64];
 		Pack.ReadString(name, sizeof(name));
 		DeleteDoor(name);
+		#if defined DOOR_HOOKS
+		UnhookDoorActionEx(name);
+		#endif
 		PrintToChat(client, CHAT_PATTERN, "Door deleted", name);
 	}
 	
@@ -1003,16 +1294,17 @@ public void SJDMenu2_ConfirmDeleteDoor(int client, bool result, any data)
 
 void SJDMenu2_ShowTestSubMenu(int client)
 {
+	SetGlobalTransTarget(client);
 	Menu menu = new Menu(SJDMenu2_TestSubMenu);
 	menu.SetTitle("%t", "Test title");
 	char buffer[128];
-	Format(buffer, sizeof(buffer), "%t", "Test open");
+	FormatEx(buffer, sizeof(buffer), "%t", "Test open");
 	menu.AddItem("open", buffer);
-	Format(buffer, sizeof(buffer), "%t", "Test close");
+	FormatEx(buffer, sizeof(buffer), "%t", "Test close");
 	menu.AddItem("close", buffer);
-	Format(buffer, sizeof(buffer), "%t", "Test toggle");
+	FormatEx(buffer, sizeof(buffer), "%t", "Test toggle");
 	menu.AddItem("toggle", buffer);
-	Format(buffer, sizeof(buffer), "%t", "Test toggleex");
+	FormatEx(buffer, sizeof(buffer), "%t", "Test toggleex");
 	menu.AddItem("toggleex", buffer);
 	menu.OptionFlags |= MENUFLAG_BUTTON_EXITBACK;
 	g_SJDMenu2 = menu;
@@ -1049,13 +1341,14 @@ public int SJDMenu2_TestSubMenu(Menu menu, MenuAction action, int param1, int pa
 
 void SJDMenu2_ShowButtonsSubMenu(int client)
 {
+	SetGlobalTransTarget(client);
 	Menu menu = new Menu(SJDMenu2_ButtonsSubMenu);
 	menu.SetTitle("%t", "Buttons title");
 	char buffer[128];
-	Format(buffer, sizeof(buffer), "%t", "Save button");
+	FormatEx(buffer, sizeof(buffer), "%t", "Save button");
 	menu.AddItem("save", buffer);
 	if(!ExecuteButtons(SJDMenu2_AddItemsToButtonsSubMenu, menu)) {
-		Format(buffer, sizeof(buffer), "%t", "No buttons");
+		FormatEx(buffer, sizeof(buffer), "%t", "No buttons");
 		menu.AddItem("nobuttons", buffer, ITEMDRAW_DISABLED);
 	}
 	menu.OptionFlags |= MENUFLAG_BUTTON_EXITBACK;
@@ -1068,8 +1361,8 @@ public void SJDMenu2_AddItemsToButtonsSubMenu(int buttonid, float origin[3], any
 {
 	Menu menu = view_as<Menu>(data);
 	char info[128], display[128];
-	Format(info, sizeof(info), "%d", buttonid);
-	Format(display, sizeof(display), "%t", "Button item", buttonid);
+	FormatEx(info, sizeof(info), "%d", buttonid);
+	FormatEx(display, sizeof(display), "%t", "Button item", buttonid);
 	menu.AddItem(info, display);
 }
 
@@ -1141,12 +1434,13 @@ public void SJDMenu2_ConfirmSaveButton(int client, bool result, any data)
 
 void SJDMenu2_ShowButtonItemMenu(int client, int buttonid)
 {
+	SetGlobalTransTarget(client);
 	Menu menu = new Menu(SJDMenu2_ButtonItemMenu);
 	char info[128], display[128];
-	Format(info, sizeof(info), "%d", buttonid);
-	Format(display, sizeof(display), "%t", "Button index", buttonid);
+	FormatEx(info, sizeof(info), "%d", buttonid);
+	FormatEx(display, sizeof(display), "%t", "Button index", buttonid);
 	menu.AddItem(info, display, ITEMDRAW_DISABLED);
-	Format(display, sizeof(display), "%t", "Delete button");
+	FormatEx(display, sizeof(display), "%t", "Delete button");
 	menu.AddItem("delete", display);
 	menu.OptionFlags |= MENUFLAG_BUTTON_EXITBACK;
 	g_SJDMenu2 = menu;
@@ -1233,14 +1527,20 @@ void EnableButtonGlow(int buttonid)
 	if (g_glowedbutton != 0)
 		return;
 	
-	AcceptEntityInput(g_buttonindex[buttonid], "SetGlowEnabled");
+	if (cv_sjd_buttons_glow.BoolValue)
+		SetGlowColor(g_buttonindex[buttonid], BUTTON_CHOOSEN_GLOW_COLOR);
+	else 
+		AcceptEntityInput(g_buttonindex[buttonid], "SetGlowEnabled");
 	g_glowedbutton = g_buttonindex[buttonid];
 }
 
 void DisableButtonGlow()
 {
 	if (g_glowedbutton != 0) {
-		AcceptEntityInput(g_glowedbutton, "SetGlowDisabled");
+		if (cv_sjd_buttons_glow.BoolValue)
+			SetDefaultGlowColor(g_glowedbutton);
+		else
+			AcceptEntityInput(g_glowedbutton, "SetGlowDisabled");
 		g_glowedbutton = 0;
 	}
 }
@@ -1366,3 +1666,178 @@ bool CheckMapsWithNoDoorsCfg(int client)
 	return allconfigured;
 }
 //** End Debug section **//
+
+//** Hand mode section **//
+#if defined HAND_MODE
+public Action Command_Handmode(int client, int args)
+{
+	switch (args) {
+		case 0: {
+			PrintToChat(client, CHAT_PATTERN, "See console for output");
+			KeyValues kv = new KeyValues("handmode");
+			int MaxEntities = GetMaxEntities();
+			char clsname[64], name[64];
+			for (int i = MaxClients+1; i < MaxEntities; i++)
+				if (IsValidEdict(i)) {
+					GetEntityClassname(i, clsname, sizeof(clsname));
+					if (DoorClassValidation(clsname)) {
+						GetEntityName(i, name, sizeof(name));
+						if (strlen(name)) {
+							if (kv.JumpToKey(name))
+								kv.SetNum("amount", kv.GetNum("amount")+1);
+							else {
+								kv.JumpToKey(name, true);
+								kv.SetString("class", clsname);
+								kv.SetNum("amount", 1);
+							}
+							kv.Rewind();
+						}
+					}
+				}
+			if (kv.GotoFirstSubKey()) {
+				PrintToConsole(client, "Enitiy list:");
+				PrintToConsole(client, "name, class name, amount");
+				do {
+					kv.GetSectionName(name, sizeof(name));
+					kv.GetString("class", clsname, sizeof(clsname));
+					PrintToConsole(client, "%s, %s, %d", name, clsname, kv.GetNum("amount"));
+				} while (kv.GotoNextKey());
+			} else
+				PrintToConsole(client, "Suitable entiies not found");
+			delete kv;
+		}
+		case 1: {
+			char name[64], clsname[64], namebuffer[64], clsbuffer[64], displayname[64];
+			GetCmdArg(1, name, sizeof(name));
+			int MaxEntities = GetMaxEntities(), amount;
+			for (int i = MaxClients+1; i < MaxEntities; i++)
+				if (IsValidEdict(i)) {
+					GetEntityClassname(i, clsbuffer, sizeof(clsbuffer));
+					if (DoorClassValidation(clsbuffer)) {
+						GetEntityName(i, namebuffer, sizeof(namebuffer));
+						if (strlen(namebuffer) && StrEqual(name, namebuffer, false)) {
+							if (!strlen(displayname))
+								strcopy(displayname, sizeof(displayname), namebuffer);
+							if (!strlen(clsname))
+								strcopy(clsname, sizeof(clsname), clsbuffer);
+							amount++;
+						}
+						strcopy(namebuffer, sizeof(namebuffer), "");
+					}
+				}
+			if (amount) {
+				ShowHandmodeMenu(client, displayname, clsname, amount);
+			} else
+				ReplyToCommand(client, "No entities with %s name.", name);
+		}
+		default: ReplyToCommand(client, "Usage: sm_sjdhm [<name>]");
+	}
+
+	return Plugin_Handled;
+}
+
+stock void ShowHandmodeMenu(int client, const char[] name, const char[] clsname, int amount)
+{
+	Menu menu = new Menu(HandmodeMenu);
+	SetGlobalTransTarget(client);
+	char buffer[128];
+	menu.SetTitle("%s (%s), amt %d", name, clsname, amount);
+	menu.AddItem(name, "", ITEMDRAW_IGNORE);
+	menu.AddItem(clsname, "", ITEMDRAW_IGNORE);
+	FormatEx(buffer, sizeof(buffer), "%d", amount);
+	menu.AddItem(buffer, "", ITEMDRAW_IGNORE);
+	FormatEx(buffer, sizeof(buffer), "%t", "Test open");
+	menu.AddItem("open", buffer);
+	FormatEx(buffer, sizeof(buffer), "%t", "Test close");
+	menu.AddItem("close", buffer);
+	FormatEx(buffer, sizeof(buffer), "%t", "Test toggle");
+	menu.AddItem("toggle", buffer);
+	FormatEx(buffer, sizeof(buffer), "%t", "Test toggleex");
+	menu.AddItem("toggleex", buffer);
+	FormatEx(buffer, sizeof(buffer), "%t", "Save door");
+	menu.AddItem("save", buffer);
+	menu.Display(client, MENU_TIME_FOREVER);
+}
+
+public int HandmodeMenu(Menu menu, MenuAction action, int param1, int param2)
+{
+	switch (action) {
+		case MenuAction_Select: {
+			char name[64], clsname[64], info[64];
+			int amount;
+			menu.GetItem(0, name, sizeof(name));
+			menu.GetItem(1, clsname, sizeof(clsname));
+			menu.GetItem(2, info, sizeof(info));
+			amount = StringToInt(info);
+			menu.GetItem(param2, info, sizeof(info));
+			if (StrEqual("open", info)) {
+				DoorCmd(OpenDoor, name, clsname);
+				ShowHandmodeMenu(param1, name, clsname, amount);
+			} else if (StrEqual("close", info)) {
+				DoorCmd(CloseDoor, name, clsname);
+				ShowHandmodeMenu(param1, name, clsname, amount);
+			} else if (StrEqual("toggle", info)) {
+				DoorCmd(ToggleDoor, name, clsname);
+				ShowHandmodeMenu(param1, name, clsname, amount);
+			} else if (StrEqual("toggleex", info)) {
+				DoorCmd(ToggleDoorEx, name, clsname);
+				ShowHandmodeMenu(param1, name, clsname, amount);
+			} else if (StrEqual("save", info)) {
+				#if defined CONFIRM_MENUS
+				HandmodeMenu_ShowConfirmSave(param1, name, clsname, amount);
+				#else
+				SaveDoor(name, clsname);
+				SetGlobalTransTarget(param1);
+				PrintToChat(param1, CHAT_PATTERN, "Door saved", name);
+				#endif
+			}
+		}
+		//case MenuAction_Cancel:
+		case MenuAction_End: 
+			delete menu;
+	}
+}
+
+#if defined CONFIRM_MENUS
+stock void HandmodeMenu_ShowConfirmSave(int client, const char[] name, const char[] clsname, int amount)
+{
+	Menu menu = new Menu(HandmodeMenu_ConfirmSave);
+	SetGlobalTransTarget(client);
+	char buffer[128];
+	menu.SetTitle("%t", "Confirm save door", name);
+	menu.AddItem(name, "", ITEMDRAW_IGNORE);
+	menu.AddItem(clsname, "", ITEMDRAW_IGNORE);
+	FormatEx(buffer, sizeof(buffer), "%d", amount);
+	menu.AddItem(buffer, "", ITEMDRAW_IGNORE);
+	FormatEx(buffer, sizeof(buffer), "%t", "Yes");
+	menu.AddItem("yes", buffer);
+	FormatEx(buffer, sizeof(buffer), "%t", "No");
+	menu.AddItem("no", buffer);
+	menu.Display(client, MENU_TIME_FOREVER);
+}
+
+public int HandmodeMenu_ConfirmSave(Menu menu, MenuAction action, int param1, int param2)
+{
+	switch (action) {
+		case MenuAction_Select: {
+			char name[64], clsname[64], info[64];
+			menu.GetItem(0, name, sizeof(name));
+			menu.GetItem(1, clsname, sizeof(clsname));
+			menu.GetItem(param2, info, sizeof(info));
+			if (StrEqual("yes", info)) {
+				SaveDoor(name, clsname);
+				SetGlobalTransTarget(param1);
+				PrintToChat(param1, CHAT_PATTERN, "Door saved", name);
+			} else {
+				menu.GetItem(2, info, sizeof(info));
+				ShowHandmodeMenu(param1, name, clsname, StringToInt(info));
+			}
+		}
+		//case MenuAction_Cancel:
+		case MenuAction_End: 
+			delete menu;
+	}
+}
+#endif
+#endif
+//** End Hand mode section **//
