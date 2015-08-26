@@ -11,3 +11,4 @@ Added handemode menu for test and save entities.
 Fixed bug with translate in menus.
 Format replace to FormatEx.
 Fixed plugin reload process (Auto close menu, remove buttons from map).
+Added cvar sjd_buttons_filter (def. "0") — "If 0 all can use buttons, if 1 only CT can use buttons".
