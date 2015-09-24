@@ -13,10 +13,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>
 
-#define PLUGIN_VERSION "0.5.0-beta"
+#define PLUGIN_VERSION "0.5.1-beta"
 
 #include <sdktools>
-#include <topmenus>
 #include <cstrike>
 
 #pragma newdecls required
@@ -182,9 +181,7 @@ public Action ShowLookAt(Handle timer)
 
 public void ConVarChanged(ConVar convar, const char[] oldValue, const char[] newValue)
 {
-	char cvarname[64];
-	convar.GetName(cvarname, sizeof(cvarname));
-	if (StrEqual("sjd_buttons_glow", cvarname)) {
+	if (convar == cv_sjd_buttons_glow) {
 		for (int i = 0; i < sizeof(g_buttonindex); i++)
 			if (g_buttonindex[i] != 0) {
 				if (g_buttonindex[i] != g_glowedbutton)
@@ -197,7 +194,7 @@ public void ConVarChanged(ConVar convar, const char[] oldValue, const char[] new
 					}
 			} else
 				break;
-	} else if (StrEqual("sjd_buttons_glow_color", cvarname)) {
+	} else {
 		if (cv_sjd_buttons_glow.BoolValue)
 			for (int i = 0; i < sizeof(g_buttonindex); i++)
 				if (g_buttonindex[i] != 0) {
@@ -251,9 +248,9 @@ bool ExecuteDoors(DoorHandler handler, any data = 0)
 void InputToDoor(const char[] name, const char[] clsname, const char[] input)
 {
 	
-	int doors[128], MaxEntities = GetMaxEntities();
+	int doors[128], MaxEntities = GetMaxEntities(), i;
 	char entclsname[64], entname[64];
-	for (int i=MaxClients+1;i<MaxEntities;i++) {
+	for (i = MaxClients+1; i < MaxEntities; i++) {
 		if (IsValidEntity(i)) {
 			GetEntityClassname(i, entclsname, sizeof(entclsname));
 			if (StrEqual(clsname, entclsname)) {
@@ -271,7 +268,7 @@ void InputToDoor(const char[] name, const char[] clsname, const char[] input)
 		LogError("No entity with \"%s\" name on  map.", name, mapname);
 	}
 	
-	for (int i=1;i<=doors[0];i++)
+	for (i = 1; i <= doors[0]; i++)
 		AcceptEntityInput(doors[i], input);
 }
 
@@ -1074,23 +1071,22 @@ public Action Command_SJDMenu(int client, int args)
 
 void ShowSJDMenu2(int client)
 {
-	SetGlobalTransTarget(client);
 	if (g_sjdclient != 0 && g_sjdclient != client) {
 		PrintToChat(client, CHAT_PATTERN, "SJD menu denied - already opened");
 		return;
 	}
 	
-	Menu menu = new Menu(SJDMenu2);
-	menu.SetTitle("Smart Jail Doors");
+	g_SJDMenu2 = new Menu(SJDMenu2);
+	g_SJDMenu2.SetTitle("Smart Jail Doors");
 	char buffer[128];
+	SetGlobalTransTarget(client);
 	FormatEx(buffer, sizeof(buffer), "%t", "Doors");
-	menu.AddItem("doors", buffer);
+	g_SJDMenu2.AddItem("doors", buffer);
 	FormatEx(buffer, sizeof(buffer), "%t", "Test");
-	menu.AddItem("test", buffer);
+	g_SJDMenu2.AddItem("test", buffer);
 	FormatEx(buffer, sizeof(buffer), "%t", "Buttons");
-	menu.AddItem("buttons", buffer);
-	g_SJDMenu2 = menu;
-	menu.Display(client, MENU_TIME_FOREVER);
+	g_SJDMenu2.AddItem("buttons", buffer);
+	g_SJDMenu2.Display(client, MENU_TIME_FOREVER);
 	g_sjdclient = client;
 }
 
@@ -1106,14 +1102,13 @@ public int SJDMenu2(Menu menu, MenuAction action, int param1, int param2)
 {
 	switch (action) {
 		case MenuAction_Select: {
-			char info[64];
-			menu.GetItem(param2, info, sizeof(info));
-			if (StrEqual(info, "doors")) {
-				SJDMenu2_ShowDoorsSubMenu(param1);
-			} else if (StrEqual(info, "test")) {
-				SJDMenu2_ShowTestSubMenu(param1);
-			} else if (StrEqual(info, "buttons")) {
-				SJDMenu2_ShowButtonsSubMenu(param1);
+			switch (param2) {
+				case 0:
+					SJDMenu2_ShowDoorsSubMenu(param1);
+				case 1:
+					SJDMenu2_ShowTestSubMenu(param1);
+				case 2:
+					SJDMenu2_ShowButtonsSubMenu(param1);
 			}
 		}
 		case MenuAction_Cancel: CloseSJDMenu();
@@ -1124,34 +1119,30 @@ public int SJDMenu2(Menu menu, MenuAction action, int param1, int param2)
 void SJDMenu2_ShowDoorsSubMenu(int client, bool late = false)
 {
 	SetGlobalTransTarget(client);
-	Menu menu = new Menu(SJDMenu2_DoorsSubMenu);
-	menu.SetTitle("%t", "Doors title");
+	g_SJDMenu2 = new Menu(SJDMenu2_DoorsSubMenu);
+	g_SJDMenu2.SetTitle("%t", "Doors title");
 	char buffer[128];
 	FormatEx(buffer, sizeof(buffer), "%t", "Save door");
-	menu.AddItem("save", buffer);
-	if (!ExecuteDoors(SJDMenu2_AddItemsToDoorsSubMenu, menu)) {
+	g_SJDMenu2.AddItem("save", buffer);
+	if (!ExecuteDoors(SJDMenu2_AddItemsToDoorsSubMenu)) {
 		FormatEx(buffer, sizeof(buffer), "%t", "No doors");
-		menu.AddItem("nodoors", buffer, ITEMDRAW_DISABLED);
+		g_SJDMenu2.AddItem("nodoors", buffer, ITEMDRAW_DISABLED);
 	}
-	menu.OptionFlags |= MENUFLAG_BUTTON_EXITBACK;
-	g_SJDMenu2 = menu;
-	menu.Display(client, MENU_TIME_FOREVER);
+	g_SJDMenu2.OptionFlags |= MENUFLAG_BUTTON_EXITBACK;
+	g_SJDMenu2.Display(client, MENU_TIME_FOREVER);
 	EnableLookAt(late);
 }
 
-public void SJDMenu2_AddItemsToDoorsSubMenu(const char[] name, const char[] clsname, any data)
+public void SJDMenu2_AddItemsToDoorsSubMenu(const char[] name, const char[] clsname)
 {
-	Menu menu = view_as<Menu>(data);
-	menu.AddItem(name, name);
+	g_SJDMenu2.AddItem(name, name);
 }
 
 public int SJDMenu2_DoorsSubMenu(Menu menu, MenuAction action, int param1, int param2)
 {
 	switch (action) {
 		case MenuAction_Select: {
-			char info[64];
-			menu.GetItem(param2, info, sizeof(info));
-			if (StrEqual(info, "save")) {
+			if (param2 == 0) {
 				int target = GetClientAimTarget(param1, false);
 				if (target == -1) {
 					PrintToChat(param1, CHAT_PATTERN, "Save door denied - not found");
@@ -1182,8 +1173,11 @@ public int SJDMenu2_DoorsSubMenu(Menu menu, MenuAction action, int param1, int p
 						}
 					}
 				}
-			} else
+			} else {
+				char info[64];
+				menu.GetItem(param2, info, sizeof(info));
 				SJDMenu2_ShowDoorItemMenu(param1, info);
+			}
 		}
 		case MenuAction_Cancel:
 			switch (param2) {
@@ -1228,17 +1222,16 @@ void SJDMenu2_ShowDoorItemMenu(int client, const char[] name)
 	g_kv.Rewind();
 	
 	SetGlobalTransTarget(client);
-	Menu menu = new Menu(SJDMenu2_DoorItemMenu);
+	g_SJDMenu2 = new Menu(SJDMenu2_DoorItemMenu);
 	char buffer[64];
 	FormatEx(buffer, sizeof(buffer), "Name: %s", name);
-	menu.AddItem(name, buffer, ITEMDRAW_DISABLED);
+	g_SJDMenu2.AddItem(name, buffer, ITEMDRAW_DISABLED);
 	FormatEx(buffer, sizeof(buffer), "Class name: %s", clsname);
-	menu.AddItem(clsname, buffer, ITEMDRAW_DISABLED);
+	g_SJDMenu2.AddItem(clsname, buffer, ITEMDRAW_DISABLED);
 	FormatEx(buffer, sizeof(buffer), "%t", "Delete door");
-	menu.AddItem("delete", buffer);
-	menu.OptionFlags |= MENUFLAG_BUTTON_EXITBACK;
-	g_SJDMenu2 = menu;
-	menu.Display(client, MENU_TIME_FOREVER);
+	g_SJDMenu2.AddItem("delete", buffer);
+	g_SJDMenu2.OptionFlags |= MENUFLAG_BUTTON_EXITBACK;
+	g_SJDMenu2.Display(client, MENU_TIME_FOREVER);
 }
 
 public int SJDMenu2_DoorItemMenu(Menu menu, MenuAction action, int param1, int param2)
@@ -1295,36 +1288,34 @@ public void SJDMenu2_ConfirmDeleteDoor(int client, bool result, any data)
 void SJDMenu2_ShowTestSubMenu(int client)
 {
 	SetGlobalTransTarget(client);
-	Menu menu = new Menu(SJDMenu2_TestSubMenu);
-	menu.SetTitle("%t", "Test title");
+	g_SJDMenu2 = new Menu(SJDMenu2_TestSubMenu);
+	g_SJDMenu2.SetTitle("%t", "Test title");
 	char buffer[128];
 	FormatEx(buffer, sizeof(buffer), "%t", "Test open");
-	menu.AddItem("open", buffer);
+	g_SJDMenu2.AddItem("open", buffer);
 	FormatEx(buffer, sizeof(buffer), "%t", "Test close");
-	menu.AddItem("close", buffer);
+	g_SJDMenu2.AddItem("close", buffer);
 	FormatEx(buffer, sizeof(buffer), "%t", "Test toggle");
-	menu.AddItem("toggle", buffer);
+	g_SJDMenu2.AddItem("toggle", buffer);
 	FormatEx(buffer, sizeof(buffer), "%t", "Test toggleex");
-	menu.AddItem("toggleex", buffer);
-	menu.OptionFlags |= MENUFLAG_BUTTON_EXITBACK;
-	g_SJDMenu2 = menu;
-	menu.Display(client, MENU_TIME_FOREVER);
+	g_SJDMenu2.AddItem("toggleex", buffer);
+	g_SJDMenu2.OptionFlags |= MENUFLAG_BUTTON_EXITBACK;
+	g_SJDMenu2.Display(client, MENU_TIME_FOREVER);
 }
 
 public int SJDMenu2_TestSubMenu(Menu menu, MenuAction action, int param1, int param2)
 {
 	switch (action) {
 		case MenuAction_Select: {
-			char info[64];
-			menu.GetItem(param2, info, sizeof(info));
-			if (StrEqual(info, "open")) {
-				OpenDoorsOnMap();
-			} else if (StrEqual(info, "close")) {
-				CloseDoorsOnMap();
-			} else if (StrEqual(info, "toggle")) {
-				ToggleDoorsOnMap();
-			} else if (StrEqual(info, "toggleex")) {
-				ToggleExDoorsOnMap();
+			switch (param2) {
+				case 0:
+					OpenDoorsOnMap();
+				case 1:
+					CloseDoorsOnMap();
+				case 2:
+					ToggleDoorsOnMap();
+				case 3:
+					ToggleExDoorsOnMap();
 			}
 			SJDMenu2_ShowTestSubMenu(param1);
 		}
@@ -1342,37 +1333,33 @@ public int SJDMenu2_TestSubMenu(Menu menu, MenuAction action, int param1, int pa
 void SJDMenu2_ShowButtonsSubMenu(int client)
 {
 	SetGlobalTransTarget(client);
-	Menu menu = new Menu(SJDMenu2_ButtonsSubMenu);
-	menu.SetTitle("%t", "Buttons title");
+	g_SJDMenu2 = new Menu(SJDMenu2_ButtonsSubMenu);
+	g_SJDMenu2.SetTitle("%t", "Buttons title");
 	char buffer[128];
 	FormatEx(buffer, sizeof(buffer), "%t", "Save button");
-	menu.AddItem("save", buffer);
-	if(!ExecuteButtons(SJDMenu2_AddItemsToButtonsSubMenu, menu)) {
+	g_SJDMenu2.AddItem("save", buffer);
+	if(!ExecuteButtons(SJDMenu2_AddItemsToButtonsSubMenu)) {
 		FormatEx(buffer, sizeof(buffer), "%t", "No buttons");
-		menu.AddItem("nobuttons", buffer, ITEMDRAW_DISABLED);
+		g_SJDMenu2.AddItem("nobuttons", buffer, ITEMDRAW_DISABLED);
 	}
-	menu.OptionFlags |= MENUFLAG_BUTTON_EXITBACK;
-	g_SJDMenu2 = menu;
-	menu.Display(client, MENU_TIME_FOREVER);
+	g_SJDMenu2.OptionFlags |= MENUFLAG_BUTTON_EXITBACK;
+	g_SJDMenu2.Display(client, MENU_TIME_FOREVER);
 	EnableGhostButton();
 }
 
-public void SJDMenu2_AddItemsToButtonsSubMenu(int buttonid, float origin[3], any data)
+public void SJDMenu2_AddItemsToButtonsSubMenu(int buttonid, float origin[3])
 {
-	Menu menu = view_as<Menu>(data);
 	char info[128], display[128];
 	FormatEx(info, sizeof(info), "%d", buttonid);
 	FormatEx(display, sizeof(display), "%t", "Button item", buttonid);
-	menu.AddItem(info, display);
+	g_SJDMenu2.AddItem(info, display);
 }
 
 public int SJDMenu2_ButtonsSubMenu(Menu menu, MenuAction action, int param1, int param2)
 {
 	switch (action) {
 		case MenuAction_Select: {
-			char info[64];
-			menu.GetItem(param2, info, sizeof(info));
-			if (StrEqual(info, "save")) {
+			if (param2 == 0) {
 				float origin[3];
 				GetAimOrigin(param1, origin);
 #if defined CONFIRM_MENUS
@@ -1391,6 +1378,8 @@ public int SJDMenu2_ButtonsSubMenu(Menu menu, MenuAction action, int param1, int
 				SJDMenu2_ShowButtonsSubMenu(param1);
 #endif
 			} else {
+				char info[64];
+				menu.GetItem(param2, info, sizeof(info));
 				SJDMenu2_ShowButtonItemMenu(param1, StringToInt(info));
 				DisableGhostButton();
 			}
@@ -1435,16 +1424,15 @@ public void SJDMenu2_ConfirmSaveButton(int client, bool result, any data)
 void SJDMenu2_ShowButtonItemMenu(int client, int buttonid)
 {
 	SetGlobalTransTarget(client);
-	Menu menu = new Menu(SJDMenu2_ButtonItemMenu);
+	g_SJDMenu2 = new Menu(SJDMenu2_ButtonItemMenu);
 	char info[128], display[128];
 	FormatEx(info, sizeof(info), "%d", buttonid);
 	FormatEx(display, sizeof(display), "%t", "Button index", buttonid);
-	menu.AddItem(info, display, ITEMDRAW_DISABLED);
+	g_SJDMenu2.AddItem(info, display, ITEMDRAW_DISABLED);
 	FormatEx(display, sizeof(display), "%t", "Delete button");
-	menu.AddItem("delete", display);
-	menu.OptionFlags |= MENUFLAG_BUTTON_EXITBACK;
-	g_SJDMenu2 = menu;
-	menu.Display(client, MENU_TIME_FOREVER);
+	g_SJDMenu2.AddItem("delete", display);
+	g_SJDMenu2.OptionFlags |= MENUFLAG_BUTTON_EXITBACK;
+	g_SJDMenu2.Display(client, MENU_TIME_FOREVER);
 	EnableButtonGlow(buttonid);
 }
 
