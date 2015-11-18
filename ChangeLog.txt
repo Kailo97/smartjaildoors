@@ -1,2 +1,6 @@
+v0.5.2-beta
+Fixed bug, when u can use button in spectate mode.
+Distance of use increased from 64 to 80.
+
 v0.5.1-beta
 Optimization.

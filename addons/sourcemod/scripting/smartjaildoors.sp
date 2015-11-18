@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>
 
-#define PLUGIN_VERSION "0.5.1-beta"
+#define PLUGIN_VERSION "0.5.2-beta"
 
 #include <sdktools>
 #include <cstrike>
@@ -40,7 +40,7 @@ public Plugin myinfo =
 
 #define CHAT_PATTERN	"[SJD] %t" // Pattern for all plugin's msgs in chat. If you want replace tag - edit this. (no support colors tags)
 
-#define BUTTON_USE		64.0 // Distance before button for active
+#define BUTTON_USE		80.0 // Distance before button for active
 #define BUTTON_HEIGHT	52.2 // Button settings
 #define USE_AREA		15.0 // Distance from button top as radius sphere where u can use button
 #define BUTTON_USE_SOUND "buttons/button3.wav" // Default button use sound
@@ -421,7 +421,7 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 	if (f_buttons & IN_USE == IN_USE && g_oldButtons[client] & IN_USE != IN_USE)
 	{
 #if defined NEW_USE_LOGIC
-		if (HaveButtonsInCfg() && cv_sjd_buttons_filter.BoolValue ? (GetClientTeam(client) == CS_TEAM_CT) : true) {
+		if (IsPlayerAlive(client) && HaveButtonsInCfg() && (!cv_sjd_buttons_filter.BoolValue || GetClientTeam(client) == CS_TEAM_CT)) {
 			char mapName[64];
 			GetCurrentMap(mapName, sizeof(mapName));
 			if (IsMapConfigured(mapName)) {
@@ -471,7 +471,7 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 			}
 		}
 #else
-		if (HaveButtonsInCfg() && cv_sjd_buttons_filter.BoolValue ? (GetClientTeam(client) == CS_TEAM_CT) : true) {
+		if (IsPlayerAlive(client) && HaveButtonsInCfg() && (!cv_sjd_buttons_filter.BoolValue || GetClientTeam(client) == CS_TEAM_CT)) {
 			int target = GetClientAimTarget(client, false);
 			if (target != -1) {
 				char mapname[64];

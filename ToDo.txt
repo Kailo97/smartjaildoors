@@ -2,3 +2,5 @@ Add 'only open' mode setting for map.
 Add OnOpenDoor forward (In progress).
 Add OnCloseDoor forward (In progress).
 Add Lock/Unlock doors.
+Поддержку CS:S
+? Исправить %t на %T в функциях где нет клиента
