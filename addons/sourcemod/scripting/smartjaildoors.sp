@@ -89,6 +89,9 @@ ConVar cv_sjd_buttons_glow;
 ConVar cv_sjd_buttons_glow_color;
 ConVar cv_sjd_buttons_filter;
 
+Handle fwd_doorsopened;
+Handle fwd_doorsclosed;
+
 //Downloadable files
 char downloadablefiles[][] = {
 	"models/kzmod/buttons/standing_button.dx90.vtx",
@@ -131,6 +134,9 @@ public void OnPluginStart()
 	HookEvent("round_start", OnRoundStart, EventHookMode_PostNoCopy);
 	HookEvent("round_end", OnRoundEnd, EventHookMode_PostNoCopy);
 	HookEvent("player_death", OnPlayerDeath);
+	
+	fwd_doorsopened = CreateGlobalForward("SJD_DoorsOpened", ET_Ignore, Param_Cell, Param_Cell);
+	fwd_doorsclosed = CreateGlobalForward("SJD_DoorsClosed", ET_Ignore, Param_Cell, Param_Cell);
 	
 	CreateTimer(0.1, ShowLookAt, _, TIMER_REPEAT);
 	
@@ -982,7 +988,10 @@ stock void HookDoorOpen(const char[] name, const char[] clsname)
 
 public void OnDoorOpen(const char[] output, int caller, int activator, float delay)
 {
-	PrintToChatAll("OnDoorOpen");
+	Call_StartForward(fwd_doorsopened);
+	Call_PushCell(caller);
+	Call_PushCell(activator);
+	Call_Finish();
 }
 
 stock void UnhookDoorOpen(const char[] name, const char[] clsname)
@@ -1012,7 +1021,10 @@ stock void HookDoorClose(const char[] name, const char[] clsname)
 
 public void OnDoorClose(const char[] output, int caller, int activator, float delay)
 {
-	PrintToChatAll("OnDoorClose");
+	Call_StartForward(fwd_doorsclosed);
+	Call_PushCell(caller);
+	Call_PushCell(activator);
+	Call_Finish();
 }
 
 stock void UnhookDoorClose(const char[] name, const char[] clsname)
