@@ -18,6 +18,11 @@
 #endif
 #define _smartjaildoors_included_
 
+// Forward for when jail doors are opened. 
+forward SJD_DoorsOpened(int caller, int activator);
+// Forward for when jail doors are closed.
+forward SJD_DoorsClosed(int caller, int activator);
+
 /**
  * Open jail's doors on current map saved in Smart Jail Doors config.
  *

@@ -25,7 +25,7 @@
 #define CONFIRM_MENUS
 #define NEW_USE_LOGIC
 #define HAND_MODE
-//#define DOOR_HOOKS
+#define DOOR_HOOKS
 
 public Plugin myinfo =
 {
@@ -87,6 +87,9 @@ ConVar cv_sjd_buttons_glow;
 ConVar cv_sjd_buttons_glow_color;
 ConVar cv_sjd_buttons_filter;
 
+Handle fwd_doorsopened;
+Handle fwd_doorsclosed;
+
 //Downloadable files
 char downloadablefiles[][] = {
 	"models/kzmod/buttons/standing_button.dx90.vtx",
@@ -140,6 +143,9 @@ public void OnPluginStart()
 	cv_sjd_buttons_glow_color.AddChangeHook(ConVarChanged);
 	cv_sjd_buttons_filter = CreateConVar("sjd_buttons_filter", "0", "If 0 all can use buttons, if 1 only CT can use buttons", _, true, 0.0, true, 1.0);
 	
+	fwd_doorsopened = CreateGlobalForward("SJD_DoorsOpened", ET_Ignore, Param_Cell, Param_Cell);
+	fwd_doorsclosed = CreateGlobalForward("SJD_DoorsClosed", ET_Ignore, Param_Cell, Param_Cell);
+	
 	ExecuteButtons(SpawnButtonsOnRoundStart);
 }
 
@@ -181,7 +187,7 @@ public Action ShowLookAt(Handle timer)
 
 public void ConVarChanged(ConVar convar, const char[] oldValue, const char[] newValue)
 {
-	if (convar == cv_sjd_buttons_glow) {
+	if (convar == cv_sjd_buttons_glow && GetEngineVersion() == Engine_CSGO) {
 		for (int i = 0; i < sizeof(g_buttonindex); i++)
 			if (g_buttonindex[i] != 0) {
 				if (g_buttonindex[i] != g_glowedbutton)
@@ -195,7 +201,7 @@ public void ConVarChanged(ConVar convar, const char[] oldValue, const char[] new
 			} else
 				break;
 	} else {
-		if (cv_sjd_buttons_glow.BoolValue)
+		if (cv_sjd_buttons_glow.BoolValue && GetEngineVersion() == Engine_CSGO)
 			for (int i = 0; i < sizeof(g_buttonindex); i++)
 				if (g_buttonindex[i] != 0) {
 					if (g_buttonindex[i] != g_glowedbutton)
@@ -728,15 +734,20 @@ void SpawnButton(int buttonid)
 
 void CreateButton(int buttonid, const float origin[3])
 {
-	int button = CreateEntityByName("prop_dynamic_glow");
+	int button = -1;
+	if (GetEngineVersion() == Engine_CSGO) {
+		button = CreateEntityByName("prop_dynamic_glow");
+	} else {
+		button = CreateEntityByName("prop_dynamic");
+	}
 	DispatchKeyValue(button, "model", "models/kzmod/buttons/standing_button.mdl");
 	DispatchKeyValue(button, "solid", "6");
-	if (cv_sjd_buttons_glow.BoolValue) {
+	if (cv_sjd_buttons_glow.BoolValue && GetEngineVersion() == Engine_CSGO) {
 		char color[12];
 		cv_sjd_buttons_glow_color.GetString(color, sizeof(color));
 		DispatchKeyValue(button, "glowcolor", color);
 		DispatchKeyValue(button, "glowenabled", "1");
-	} else {
+	} else if (GetEngineVersion() == Engine_CSGO) {
 		DispatchKeyValue(button, "glowcolor", "255 0 0");
 		DispatchKeyValue(button, "glowenabled", "0");
 	}
@@ -983,7 +994,11 @@ stock void HookDoorOpen(const char[] name, const char[] clsname)
 
 public void OnDoorOpen(const char[] output, int caller, int activator, float delay)
 {
-	PrintToChatAll("OnDoorOpen");
+	//PrintToChatAll("OnDoorOpen");
+	Call_StartForward(fwd_doorsopened);
+	Call_PushCell(caller);
+	Call_PushCell(activator);
+	Call_Finish();
 }
 
 stock void UnhookDoorOpen(const char[] name, const char[] clsname)
@@ -1013,7 +1028,11 @@ stock void HookDoorClose(const char[] name, const char[] clsname)
 
 public void OnDoorClose(const char[] output, int caller, int activator, float delay)
 {
-	PrintToChatAll("OnDoorClose");
+	//PrintToChatAll("OnDoorClose");
+	Call_StartForward(fwd_doorsclosed);
+	Call_PushCell(caller);
+	Call_PushCell(activator);
+	Call_Finish();
 }
 
 stock void UnhookDoorClose(const char[] name, const char[] clsname)
@@ -1515,9 +1534,9 @@ void EnableButtonGlow(int buttonid)
 	if (g_glowedbutton != 0)
 		return;
 	
-	if (cv_sjd_buttons_glow.BoolValue)
+	if (cv_sjd_buttons_glow.BoolValue && GetEngineVersion() == Engine_CSGO)
 		SetGlowColor(g_buttonindex[buttonid], BUTTON_CHOOSEN_GLOW_COLOR);
-	else 
+	else if (GetEngineVersion() == Engine_CSGO)
 		AcceptEntityInput(g_buttonindex[buttonid], "SetGlowEnabled");
 	g_glowedbutton = g_buttonindex[buttonid];
 }
@@ -1525,9 +1544,9 @@ void EnableButtonGlow(int buttonid)
 void DisableButtonGlow()
 {
 	if (g_glowedbutton != 0) {
-		if (cv_sjd_buttons_glow.BoolValue)
+		if (cv_sjd_buttons_glow.BoolValue && GetEngineVersion() == Engine_CSGO)
 			SetDefaultGlowColor(g_glowedbutton);
-		else
+		else if (GetEngineVersion() == Engine_CSGO)
 			AcceptEntityInput(g_glowedbutton, "SetGlowDisabled");
 		g_glowedbutton = 0;
 	}
