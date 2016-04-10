@@ -181,7 +181,7 @@ public Action ShowLookAt(Handle timer)
 
 public void ConVarChanged(ConVar convar, const char[] oldValue, const char[] newValue)
 {
-	if (convar == cv_sjd_buttons_glow) {
+	if (convar == cv_sjd_buttons_glow && GetEngineVersion() == Engine_CSGO) {
 		for (int i = 0; i < sizeof(g_buttonindex); i++)
 			if (g_buttonindex[i] != 0) {
 				if (g_buttonindex[i] != g_glowedbutton)
@@ -195,7 +195,7 @@ public void ConVarChanged(ConVar convar, const char[] oldValue, const char[] new
 			} else
 				break;
 	} else {
-		if (cv_sjd_buttons_glow.BoolValue)
+		if (cv_sjd_buttons_glow.BoolValue && GetEngineVersion() == Engine_CSGO)
 			for (int i = 0; i < sizeof(g_buttonindex); i++)
 				if (g_buttonindex[i] != 0) {
 					if (g_buttonindex[i] != g_glowedbutton)
@@ -728,15 +728,20 @@ void SpawnButton(int buttonid)
 
 void CreateButton(int buttonid, const float origin[3])
 {
-	int button = CreateEntityByName("prop_dynamic_glow");
+	int button = -1;
+	if (GetEngineVersion() == Engine_CSGO) {
+		button = CreateEntityByName("prop_dynamic_glow");
+	} else {
+		button = CreateEntityByName("prop_dynamic");
+	}
 	DispatchKeyValue(button, "model", "models/kzmod/buttons/standing_button.mdl");
 	DispatchKeyValue(button, "solid", "6");
-	if (cv_sjd_buttons_glow.BoolValue) {
+	if (cv_sjd_buttons_glow.BoolValue && GetEngineVersion() == Engine_CSGO) {
 		char color[12];
 		cv_sjd_buttons_glow_color.GetString(color, sizeof(color));
 		DispatchKeyValue(button, "glowcolor", color);
 		DispatchKeyValue(button, "glowenabled", "1");
-	} else {
+	} else if (GetEngineVersion() == Engine_CSGO) {
 		DispatchKeyValue(button, "glowcolor", "255 0 0");
 		DispatchKeyValue(button, "glowenabled", "0");
 	}
@@ -1515,9 +1520,9 @@ void EnableButtonGlow(int buttonid)
 	if (g_glowedbutton != 0)
 		return;
 	
-	if (cv_sjd_buttons_glow.BoolValue)
+	if (cv_sjd_buttons_glow.BoolValue && GetEngineVersion() == Engine_CSGO)
 		SetGlowColor(g_buttonindex[buttonid], BUTTON_CHOOSEN_GLOW_COLOR);
-	else 
+	else if (GetEngineVersion() == Engine_CSGO)
 		AcceptEntityInput(g_buttonindex[buttonid], "SetGlowEnabled");
 	g_glowedbutton = g_buttonindex[buttonid];
 }
@@ -1525,9 +1530,9 @@ void EnableButtonGlow(int buttonid)
 void DisableButtonGlow()
 {
 	if (g_glowedbutton != 0) {
-		if (cv_sjd_buttons_glow.BoolValue)
+		if (cv_sjd_buttons_glow.BoolValue && GetEngineVersion() == Engine_CSGO)
 			SetDefaultGlowColor(g_glowedbutton);
-		else
+		else if (GetEngineVersion() == Engine_CSGO)
 			AcceptEntityInput(g_glowedbutton, "SetGlowDisabled");
 		g_glowedbutton = 0;
 	}
