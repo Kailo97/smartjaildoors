@@ -368,9 +368,6 @@ public void OnMapStart()
 
 	if (!IsSoundPrecached(BUTTON_USE_SOUND))
 		PrecacheSound(BUTTON_USE_SOUND);
-	#if defined DOOR_HOOKS
-	ExecuteDoors(AddDoorHooks);
-	#endif
 }
 
 #if defined DOOR_HOOKS
@@ -748,6 +745,10 @@ void CreateButton(int buttonid, const float origin[3])
 public void OnRoundStart(Event event, const char[] name, bool dontBroadcast)
 {
 	ExecuteButtons(SpawnButtonsOnRoundStart);
+	
+	#if defined DOOR_HOOKS
+	ExecuteDoors(AddDoorHooks);
+	#endif
 }
 
 public void OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
@@ -757,6 +758,10 @@ public void OnRoundEnd(Event event, const char[] name, bool dontBroadcast)
 		if (g_SJDMenu2 != null)
 			delete g_SJDMenu2;
 	}
+	
+	#if defined DOOR_HOOKS
+	ExecuteDoors(RemoveDoorHooks);
+	#endif
 }
 
 public void OnPlayerDeath(Event event, const char[] name, bool dontBroadcast)
