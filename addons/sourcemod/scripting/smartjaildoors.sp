@@ -25,7 +25,7 @@
 #define CONFIRM_MENUS
 #define NEW_USE_LOGIC
 #define HAND_MODE
-//#define DOOR_HOOKS
+#define DOOR_HOOKS
 
 public Plugin myinfo =
 {
@@ -87,6 +87,9 @@ ConVar cv_sjd_buttons_glow;
 ConVar cv_sjd_buttons_glow_color;
 ConVar cv_sjd_buttons_filter;
 
+Handle fwd_doorsopened;
+Handle fwd_doorsclosed;
+
 //Downloadable files
 char downloadablefiles[][] = {
 	"models/kzmod/buttons/standing_button.dx90.vtx",
@@ -139,6 +142,9 @@ public void OnPluginStart()
 	cv_sjd_buttons_glow_color = CreateConVar("sjd_buttons_glow_color", BUTTON_GLOW_COLOR, "Glow color");
 	cv_sjd_buttons_glow_color.AddChangeHook(ConVarChanged);
 	cv_sjd_buttons_filter = CreateConVar("sjd_buttons_filter", "0", "If 0 all can use buttons, if 1 only CT can use buttons", _, true, 0.0, true, 1.0);
+	
+	fwd_doorsopened = CreateGlobalForward("SJD_DoorsOpened", ET_Ignore, Param_Cell, Param_Cell);
+	fwd_doorsclosed = CreateGlobalForward("SJD_DoorsClosed", ET_Ignore, Param_Cell, Param_Cell);
 	
 	ExecuteButtons(SpawnButtonsOnRoundStart);
 }
@@ -988,7 +994,11 @@ stock void HookDoorOpen(const char[] name, const char[] clsname)
 
 public void OnDoorOpen(const char[] output, int caller, int activator, float delay)
 {
-	PrintToChatAll("OnDoorOpen");
+	//PrintToChatAll("OnDoorOpen");
+	Call_StartForward(fwd_doorsopened);
+	Call_PushCell(caller);
+	Call_PushCell(activator);
+	Call_Finish();
 }
 
 stock void UnhookDoorOpen(const char[] name, const char[] clsname)
@@ -1018,7 +1028,11 @@ stock void HookDoorClose(const char[] name, const char[] clsname)
 
 public void OnDoorClose(const char[] output, int caller, int activator, float delay)
 {
-	PrintToChatAll("OnDoorClose");
+	//PrintToChatAll("OnDoorClose");
+	Call_StartForward(fwd_doorsclosed);
+	Call_PushCell(caller);
+	Call_PushCell(activator);
+	Call_Finish();
 }
 
 stock void UnhookDoorClose(const char[] name, const char[] clsname)
