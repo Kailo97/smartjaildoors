@@ -13,7 +13,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>
 
-#define PLUGIN_VERSION "0.5.2-beta"
+#define PLUGIN_VERSION "0.6.0-beta"
 
 #include <sdktools>
 #include <cstrike>
@@ -47,6 +47,8 @@ public Plugin myinfo =
 #define BUTTON_GLOW_COLOR "0 150 0" // Default color for glow - green
 #define BUTTON_CHOOSEN_GLOW_COLOR "255 0 0" // Defailt color for glow then choosen - red
 
+#define GetEntityName(%1,%2,%3) GetEntPropString(%1, Prop_Data, "m_iName", %2, %3)
+
 KeyValues g_kv;
 
 typeset DoorHandler
@@ -68,7 +70,7 @@ typedef ConfirmMenuHandler = function void (int client, bool result, any data);
 #endif
 
 #if defined CONFIRM_MENUS
-DataPack g_MenuDataPasser[MAXPLAYERS+1];
+DataPack g_MenuDataPasser[MAXPLAYERS + 1];
 #endif
 
 int g_buttonindex[2048];
@@ -76,10 +78,10 @@ int g_sjdclient;
 bool g_sjdlookat;
 int g_glowedbutton;
 Menu g_SJDMenu2;
-int g_ghostbutton;
+int g_ghostbutton = INVALID_ENT_REFERENCE;
 bool g_ghostbuttonsave;
 float g_ghostbuttonpos[3];
-int g_oldButtons[MAXPLAYERS];
+int g_oldButtons[MAXPLAYERS + 1];
 
 ConVar cv_sjd_buttons_sound_enable;
 ConVar cv_sjd_buttons_sound;
@@ -165,7 +167,7 @@ public Action ShowLookAt(Handle timer)
 	if (g_sjdlookat) {
 		int target = GetClientAimTarget(g_sjdclient, false);
 		//char buffer[128]; // devpoint2 - don't work
-		//FormatEx(buffer, sizeof(buffer), "%t", "Save door"); // devpoint2
+		//FormatEx(buffer, sizeof(buffer), "%T", g_sjdclient, "Save door"); // devpoint2
 		if (target == -1) {
 			//g_SJDMenu2.InsertItem(0, "save", buffer, ITEMDRAW_DISABLED); // devpoint2
 			PrintHintText(g_sjdclient, "%t", "Save door denied - not found");
@@ -205,10 +207,11 @@ public void ConVarChanged(ConVar convar, const char[] oldValue, const char[] new
 	}
 }
 
-stock void GetEntityName(int entity, char[] name, int maxlen)
+// MOVED TO: line 50
+/* stock void GetEntityName(int entity, char[] name, int maxlen)
 {
 	GetEntPropString(entity, Prop_Data, "m_iName", name, maxlen);
-}
+} */
 
 bool ExecuteDoors(DoorHandler handler, any data = 0)
 {
@@ -395,12 +398,12 @@ stock void GetAimOrigin(int client, float origin[3])
 	float pos[3], ang[3];
 	GetClientEyePosition(client, pos);
 	GetClientEyeAngles(client, ang);
-	
+
 	Handle trace = TR_TraceRayFilterEx(pos, ang, MASK_SHOT, RayType_Infinite, TraceEntityFilterPlayer);
-	
+
 	if(TR_DidHit(trace))
 		TR_GetEndPosition(origin, trace);
-	
+
 	CloseHandle(trace);
 }
 
@@ -411,13 +414,6 @@ public bool TraceEntityFilterPlayer(int entity, int contentsMask)
 
 public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel[3], float angles[3], int &weapon, int &subtype, int &cmdnum, int &tickcount, int &seed, int mouse[2])
 {
-	if (g_ghostbutton != 0 && !g_ghostbuttonsave) {
-		float origin[3];
-		GetAimOrigin(g_sjdclient, origin);
-		if (!IsSamePosition(origin, g_ghostbuttonpos))
-			TeleportEntity(g_ghostbutton, origin, NULL_VECTOR, NULL_VECTOR);
-	}
-	
 	if (f_buttons & IN_USE == IN_USE && g_oldButtons[client] & IN_USE != IN_USE)
 	{
 #if defined NEW_USE_LOGIC
@@ -428,25 +424,25 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 				g_kv.JumpToKey(mapName);
 				g_kv.JumpToKey("buttons");
 				g_kv.GotoFirstSubKey();
-				
+
 				int counter;
 				float buttonPos[2048][3];
 				do
 					g_kv.GetVector("pos", buttonPos[counter++]);
 				while (g_kv.GotoNextKey());
-				
+
 				g_kv.Rewind();
-				
+
 				for (int i = 0; i < counter; i++)
 					buttonPos[i][2] += BUTTON_HEIGHT;
-				
+
 				float ang[3];
 				GetClientEyeAngles(client, ang);
 				float vec[3];
 				GetAngleVectors(ang, vec, NULL_VECTOR, NULL_VECTOR);
 				float eyePos[3];
 				GetClientEyePosition(client, eyePos);
-				
+
 				float temp_vec[3], temp_pos[3];
 				bool used;
 				for (float i = 0.0; i <= BUTTON_USE; i++) {
@@ -455,7 +451,7 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 					temp_pos = eyePos;
 					for (int i2 = 0; i2 < sizeof(eyePos); i2++)
 						temp_pos[i2] += temp_vec[i2];
-					
+
 					for (int i2 = 0; i2 < counter; i2++)
 						if (DistanceBetweenPoints(buttonPos[i2], temp_pos) <=  USE_AREA) {
 							used = true;
@@ -464,7 +460,7 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 								EmitButtonSound(buttonPos[i2]);
 							break;
 						}
-					
+
 					if (used)
 						break;
 				}
@@ -476,7 +472,7 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 			if (target != -1) {
 				char mapname[64];
 				GetCurrentMap(mapname, sizeof(mapname));
-				
+
 				if (g_kv.JumpToKey(mapname)) {
 					if (g_kv.JumpToKey("buttons")) {
 						int buttons[2048];
@@ -491,7 +487,7 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 							g_kv.Rewind();
 						} else
 							g_kv.Rewind();
-						
+
 						bool Isbutton;
 						int buttonid;
 						for (int i=1;i<=buttons[0];i++)
@@ -500,7 +496,7 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 								buttonid = buttons[i];
 								break;
 							}
-						
+
 						if (Isbutton) {
 							g_kv.JumpToKey(mapname);
 							g_kv.JumpToKey("buttons");
@@ -510,9 +506,9 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 							float buttonpos[3];
 							g_kv.GetVector("pos", buttonpos);
 							g_kv.Rewind();
-							
+
 							buttonpos[2] = buttonpos[2] + BUTTON_HEIGHT;
-							
+
 							float origin[3];
 							GetClientEyePosition(client, origin);
 							if (DistanceBetweenPoints(buttonpos, origin) <= BUTTON_USE) {
@@ -528,8 +524,15 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 		}
 #endif
 	}
-	
+
 	g_oldButtons[client] = f_buttons;
+
+	if (g_sjdclient == client)
+		if (g_ghostbutton != INVALID_ENT_REFERENCE && !g_ghostbuttonsave) {
+			float origin[3];
+			GetAimOrigin(g_sjdclient, origin);
+			TeleportEntity(EntRefToEntIndex(g_ghostbutton), origin, NULL_VECTOR, NULL_VECTOR);
+		}
 }
 
 bool HaveButtonsInCfg()
@@ -560,15 +563,9 @@ float DistanceBetweenPoints(const float point1[3], const float point2[3])
 	return SquareRoot(Pow(point2[0] - point1[0], 2.0) + Pow(point2[1] - point1[1], 2.0) + Pow(point2[2] - point1[2], 2.0));
 }
 
-bool IsSamePosition(float pos1[3], float pos2[3])
-{
-	return (pos1[0] == pos2[0] && pos1[1] == pos2[1] && pos1[2] == pos2[2]) ? true : false;
-}
-
 #if defined CONFIRM_MENUS
 void ShowConfirmMenu(int client, ConfirmMenuHandler handler, any data = 0, const char[] title = "", any ...)
 {
-	SetGlobalTransTarget(client);
 	Menu menu = new Menu(ConfirmMenu);
 	if (strlen(title)) {
 		char buffer[256];
@@ -576,9 +573,9 @@ void ShowConfirmMenu(int client, ConfirmMenuHandler handler, any data = 0, const
 		menu.SetTitle(buffer);
 	}
 	char buffer[128];
-	FormatEx(buffer, sizeof(buffer), "%t", "Yes");
+	FormatEx(buffer, sizeof(buffer), "%T", "Yes", client);
 	menu.AddItem("yes", buffer);
-	FormatEx(buffer, sizeof(buffer), "%t", "No");
+	FormatEx(buffer, sizeof(buffer), "%T", "No", client);
 	menu.AddItem("no", buffer);
 	g_MenuDataPasser[client] = new DataPack();
 	WritePackFunction(g_MenuDataPasser[client], handler);
@@ -731,6 +728,8 @@ void CreateButton(int buttonid, const float origin[3])
 	int button = CreateEntityByName("prop_dynamic_glow");
 	DispatchKeyValue(button, "model", "models/kzmod/buttons/standing_button.mdl");
 	DispatchKeyValue(button, "solid", "6");
+	DispatchKeyValue(button, "glowstyle", "0");
+	DispatchKeyValue(button, "glowdist", "32768");
 	if (cv_sjd_buttons_glow.BoolValue) {
 		char color[12];
 		cv_sjd_buttons_glow_color.GetString(color, sizeof(color));
@@ -1079,12 +1078,11 @@ void ShowSJDMenu2(int client)
 	g_SJDMenu2 = new Menu(SJDMenu2);
 	g_SJDMenu2.SetTitle("Smart Jail Doors");
 	char buffer[128];
-	SetGlobalTransTarget(client);
-	FormatEx(buffer, sizeof(buffer), "%t", "Doors");
+	FormatEx(buffer, sizeof(buffer), "%T", "Doors", client);
 	g_SJDMenu2.AddItem("doors", buffer);
-	FormatEx(buffer, sizeof(buffer), "%t", "Test");
+	FormatEx(buffer, sizeof(buffer), "%T", "Test", client);
 	g_SJDMenu2.AddItem("test", buffer);
-	FormatEx(buffer, sizeof(buffer), "%t", "Buttons");
+	FormatEx(buffer, sizeof(buffer), "%T", "Buttons", client);
 	g_SJDMenu2.AddItem("buttons", buffer);
 	g_SJDMenu2.Display(client, MENU_TIME_FOREVER);
 	g_sjdclient = client;
@@ -1107,8 +1105,10 @@ public int SJDMenu2(Menu menu, MenuAction action, int param1, int param2)
 					SJDMenu2_ShowDoorsSubMenu(param1);
 				case 1:
 					SJDMenu2_ShowTestSubMenu(param1);
-				case 2:
+				case 2: {
 					SJDMenu2_ShowButtonsSubMenu(param1);
+					EnableGhostButton();
+				}
 			}
 		}
 		case MenuAction_Cancel: CloseSJDMenu();
@@ -1118,14 +1118,13 @@ public int SJDMenu2(Menu menu, MenuAction action, int param1, int param2)
 
 void SJDMenu2_ShowDoorsSubMenu(int client, bool late = false)
 {
-	SetGlobalTransTarget(client);
 	g_SJDMenu2 = new Menu(SJDMenu2_DoorsSubMenu);
-	g_SJDMenu2.SetTitle("%t", "Doors title");
+	g_SJDMenu2.SetTitle("%T", "Doors title", client);
 	char buffer[128];
-	FormatEx(buffer, sizeof(buffer), "%t", "Save door");
+	FormatEx(buffer, sizeof(buffer), "%T", "Save door", client);
 	g_SJDMenu2.AddItem("save", buffer);
 	if (!ExecuteDoors(SJDMenu2_AddItemsToDoorsSubMenu)) {
-		FormatEx(buffer, sizeof(buffer), "%t", "No doors");
+		FormatEx(buffer, sizeof(buffer), "%T", "No doors", client);
 		g_SJDMenu2.AddItem("nodoors", buffer, ITEMDRAW_DISABLED);
 	}
 	g_SJDMenu2.OptionFlags |= MENUFLAG_BUTTON_EXITBACK;
@@ -1220,15 +1219,14 @@ void SJDMenu2_ShowDoorItemMenu(int client, const char[] name)
 	g_kv.JumpToKey(name);
 	g_kv.GetString("class", clsname, sizeof(clsname));
 	g_kv.Rewind();
-	
-	SetGlobalTransTarget(client);
+
 	g_SJDMenu2 = new Menu(SJDMenu2_DoorItemMenu);
 	char buffer[64];
 	FormatEx(buffer, sizeof(buffer), "Name: %s", name);
 	g_SJDMenu2.AddItem(name, buffer, ITEMDRAW_DISABLED);
 	FormatEx(buffer, sizeof(buffer), "Class name: %s", clsname);
 	g_SJDMenu2.AddItem(clsname, buffer, ITEMDRAW_DISABLED);
-	FormatEx(buffer, sizeof(buffer), "%t", "Delete door");
+	FormatEx(buffer, sizeof(buffer), "%T", "Delete door", client);
 	g_SJDMenu2.AddItem("delete", buffer);
 	g_SJDMenu2.OptionFlags |= MENUFLAG_BUTTON_EXITBACK;
 	g_SJDMenu2.Display(client, MENU_TIME_FOREVER);
@@ -1287,17 +1285,16 @@ public void SJDMenu2_ConfirmDeleteDoor(int client, bool result, any data)
 
 void SJDMenu2_ShowTestSubMenu(int client)
 {
-	SetGlobalTransTarget(client);
 	g_SJDMenu2 = new Menu(SJDMenu2_TestSubMenu);
-	g_SJDMenu2.SetTitle("%t", "Test title");
+	g_SJDMenu2.SetTitle("%T", "Test title", client);
 	char buffer[128];
-	FormatEx(buffer, sizeof(buffer), "%t", "Test open");
+	FormatEx(buffer, sizeof(buffer), "%T", "Test open", client);
 	g_SJDMenu2.AddItem("open", buffer);
-	FormatEx(buffer, sizeof(buffer), "%t", "Test close");
+	FormatEx(buffer, sizeof(buffer), "%T", "Test close", client);
 	g_SJDMenu2.AddItem("close", buffer);
-	FormatEx(buffer, sizeof(buffer), "%t", "Test toggle");
+	FormatEx(buffer, sizeof(buffer), "%T", "Test toggle", client);
 	g_SJDMenu2.AddItem("toggle", buffer);
-	FormatEx(buffer, sizeof(buffer), "%t", "Test toggleex");
+	FormatEx(buffer, sizeof(buffer), "%T", "Test toggleex", client);
 	g_SJDMenu2.AddItem("toggleex", buffer);
 	g_SJDMenu2.OptionFlags |= MENUFLAG_BUTTON_EXITBACK;
 	g_SJDMenu2.Display(client, MENU_TIME_FOREVER);
@@ -1332,19 +1329,17 @@ public int SJDMenu2_TestSubMenu(Menu menu, MenuAction action, int param1, int pa
 
 void SJDMenu2_ShowButtonsSubMenu(int client)
 {
-	SetGlobalTransTarget(client);
 	g_SJDMenu2 = new Menu(SJDMenu2_ButtonsSubMenu);
-	g_SJDMenu2.SetTitle("%t", "Buttons title");
+	g_SJDMenu2.SetTitle("%T", "Buttons title", client);
 	char buffer[128];
-	FormatEx(buffer, sizeof(buffer), "%t", "Save button");
+	FormatEx(buffer, sizeof(buffer), "%T", "Save button", client);
 	g_SJDMenu2.AddItem("save", buffer);
 	if(!ExecuteButtons(SJDMenu2_AddItemsToButtonsSubMenu)) {
-		FormatEx(buffer, sizeof(buffer), "%t", "No buttons");
+		FormatEx(buffer, sizeof(buffer), "%T", "No buttons", client);
 		g_SJDMenu2.AddItem("nobuttons", buffer, ITEMDRAW_DISABLED);
 	}
 	g_SJDMenu2.OptionFlags |= MENUFLAG_BUTTON_EXITBACK;
 	g_SJDMenu2.Display(client, MENU_TIME_FOREVER);
-	EnableGhostButton();
 }
 
 public void SJDMenu2_AddItemsToButtonsSubMenu(int buttonid, float origin[3])
@@ -1371,7 +1366,6 @@ public int SJDMenu2_ButtonsSubMenu(Menu menu, MenuAction action, int param1, int
 				ShowConfirmMenu(param1, SJDMenu2_ConfirmSaveButton, Pack, "%t", "Confirm save button");
 				g_ghostbuttonsave = true;
 #else
-				DisableGhostButton();
 				int buttonid = SaveButton(origin);
 				SpawnButton(buttonid);
 				PrintToChat(param1, CHAT_PATTERN, "Button saved", buttonid);
@@ -1415,21 +1409,22 @@ public void SJDMenu2_ConfirmSaveButton(int client, bool result, any data)
 	}
 	
 	delete Pack;
-	DisableGhostButton();
+	g_ghostbuttonsave = false;
 	if (IsClientInGame(client) && IsPlayerAlive(client))
 		SJDMenu2_ShowButtonsSubMenu(client);
+	else
+		DisableGhostButton();
 }
 #endif
 
 void SJDMenu2_ShowButtonItemMenu(int client, int buttonid)
 {
-	SetGlobalTransTarget(client);
 	g_SJDMenu2 = new Menu(SJDMenu2_ButtonItemMenu);
 	char info[128], display[128];
 	FormatEx(info, sizeof(info), "%d", buttonid);
-	FormatEx(display, sizeof(display), "%t", "Button index", buttonid);
+	FormatEx(display, sizeof(display), "%T", "Button index", client, buttonid);
 	g_SJDMenu2.AddItem(info, display, ITEMDRAW_DISABLED);
-	FormatEx(display, sizeof(display), "%t", "Delete button");
+	FormatEx(display, sizeof(display), "%T", "Delete button", client);
 	g_SJDMenu2.AddItem("delete", display);
 	g_SJDMenu2.OptionFlags |= MENUFLAG_BUTTON_EXITBACK;
 	g_SJDMenu2.Display(client, MENU_TIME_FOREVER);
@@ -1453,12 +1448,15 @@ public int SJDMenu2_ButtonItemMenu(Menu menu, MenuAction action, int param1, int
 			RemoveButton(buttonid);
 			PrintToChat(param1, CHAT_PATTERN, "Button deleted", buttonid);
 			SJDMenu2_ShowButtonsSubMenu(param1);
+			EnableGhostButton();
 #endif
 		}
 		case MenuAction_Cancel:
 			switch (param2) {
-				case MenuCancel_ExitBack:
+				case MenuCancel_ExitBack: {
 					SJDMenu2_ShowButtonsSubMenu(param1);
+					EnableGhostButton();
+				}
 				case MenuCancel_Exit:
 					CloseSJDMenu();
 			}
@@ -1483,8 +1481,10 @@ public void SJDMenu2_ConfirmDeleteButton(int client, bool result, any data)
 	}
 	
 	delete Pack;
-	if (IsClientInGame(client) && IsPlayerAlive(client))
+	if (IsClientInGame(client) && IsPlayerAlive(client)) {
 		SJDMenu2_ShowButtonsSubMenu(client);
+		EnableGhostButton();
+	}
 }
 #endif
 //** End Menu Section **//
@@ -1535,40 +1535,24 @@ void DisableButtonGlow()
 //** End Glow button functions **//
 
 //** Ghost button functions **//
-void EnableGhostButton(bool save = false, bool late = false)
+void EnableGhostButton()
 {
-	if (late) {
-		CreateTimer(0.0, EnableGhostButtonLate, save);
-	} else {
-		float origin[3];
-		GetAimOrigin(g_sjdclient, origin);
-		int button = CreateEntityByName("prop_dynamic");
-		DispatchKeyValue(button, "model", "models/kzmod/buttons/standing_button.mdl");
-		DispatchKeyValue(button, "renderamt", "112");
-		DispatchKeyValue(button, "rendermode", "4");
-		DispatchSpawn(button);
-		TeleportEntity(button, origin, NULL_VECTOR, NULL_VECTOR);
-		g_ghostbutton = button;
-		g_ghostbuttonsave = save;
-		g_ghostbuttonpos = origin;
-	}
-}
-
-public Action EnableGhostButtonLate(Handle timer, any save)
-{
-	EnableGhostButton(save);
+	float origin[3];
+	GetAimOrigin(g_sjdclient, origin);
+	int button = CreateEntityByName("prop_dynamic");
+	DispatchKeyValue(button, "model", "models/kzmod/buttons/standing_button.mdl");
+	DispatchKeyValue(button, "renderamt", "112");
+	DispatchKeyValue(button, "rendermode", "4");
+	DispatchSpawn(button);
+	TeleportEntity(button, origin, NULL_VECTOR, NULL_VECTOR);
+	g_ghostbutton = EntIndexToEntRef(button);
+	g_ghostbuttonpos = origin;
 }
 
 void DisableGhostButton()
 {
-	if (g_ghostbutton != 0) {
-		AcceptEntityInput(g_ghostbutton, "Kill");
-		g_ghostbutton = 0;
-		g_ghostbuttonsave = false;
-		g_ghostbuttonpos[0] = 0.0;
-		g_ghostbuttonpos[1] = 0.0;
-		g_ghostbuttonpos[2] = 0.0;
-	}
+	RemoveEntityRef(g_ghostbutton);
+	g_ghostbutton = INVALID_ENT_REFERENCE;
 }
 //** End Ghost button functions **//
 
@@ -1727,22 +1711,21 @@ public Action Command_Handmode(int client, int args)
 stock void ShowHandmodeMenu(int client, const char[] name, const char[] clsname, int amount)
 {
 	Menu menu = new Menu(HandmodeMenu);
-	SetGlobalTransTarget(client);
 	char buffer[128];
 	menu.SetTitle("%s (%s), amt %d", name, clsname, amount);
 	menu.AddItem(name, "", ITEMDRAW_IGNORE);
 	menu.AddItem(clsname, "", ITEMDRAW_IGNORE);
 	FormatEx(buffer, sizeof(buffer), "%d", amount);
 	menu.AddItem(buffer, "", ITEMDRAW_IGNORE);
-	FormatEx(buffer, sizeof(buffer), "%t", "Test open");
+	FormatEx(buffer, sizeof(buffer), "%T", "Test open", client);
 	menu.AddItem("open", buffer);
-	FormatEx(buffer, sizeof(buffer), "%t", "Test close");
+	FormatEx(buffer, sizeof(buffer), "%T", "Test close", client);
 	menu.AddItem("close", buffer);
-	FormatEx(buffer, sizeof(buffer), "%t", "Test toggle");
+	FormatEx(buffer, sizeof(buffer), "%T", "Test toggle", client);
 	menu.AddItem("toggle", buffer);
-	FormatEx(buffer, sizeof(buffer), "%t", "Test toggleex");
+	FormatEx(buffer, sizeof(buffer), "%T", "Test toggleex", client);
 	menu.AddItem("toggleex", buffer);
-	FormatEx(buffer, sizeof(buffer), "%t", "Save door");
+	FormatEx(buffer, sizeof(buffer), "%T", "Save door", client);
 	menu.AddItem("save", buffer);
 	menu.Display(client, MENU_TIME_FOREVER);
 }
@@ -1775,7 +1758,6 @@ public int HandmodeMenu(Menu menu, MenuAction action, int param1, int param2)
 				HandmodeMenu_ShowConfirmSave(param1, name, clsname, amount);
 				#else
 				SaveDoor(name, clsname);
-				SetGlobalTransTarget(param1);
 				PrintToChat(param1, CHAT_PATTERN, "Door saved", name);
 				#endif
 			}
@@ -1790,16 +1772,15 @@ public int HandmodeMenu(Menu menu, MenuAction action, int param1, int param2)
 stock void HandmodeMenu_ShowConfirmSave(int client, const char[] name, const char[] clsname, int amount)
 {
 	Menu menu = new Menu(HandmodeMenu_ConfirmSave);
-	SetGlobalTransTarget(client);
 	char buffer[128];
-	menu.SetTitle("%t", "Confirm save door", name);
+	menu.SetTitle("%T", "Confirm save door", client, name);
 	menu.AddItem(name, "", ITEMDRAW_IGNORE);
 	menu.AddItem(clsname, "", ITEMDRAW_IGNORE);
 	FormatEx(buffer, sizeof(buffer), "%d", amount);
 	menu.AddItem(buffer, "", ITEMDRAW_IGNORE);
-	FormatEx(buffer, sizeof(buffer), "%t", "Yes");
+	FormatEx(buffer, sizeof(buffer), "%T", client, "Yes");
 	menu.AddItem("yes", buffer);
-	FormatEx(buffer, sizeof(buffer), "%t", "No");
+	FormatEx(buffer, sizeof(buffer), "%T", client, "No");
 	menu.AddItem("no", buffer);
 	menu.Display(client, MENU_TIME_FOREVER);
 }
@@ -1814,7 +1795,6 @@ public int HandmodeMenu_ConfirmSave(Menu menu, MenuAction action, int param1, in
 			menu.GetItem(param2, info, sizeof(info));
 			if (StrEqual("yes", info)) {
 				SaveDoor(name, clsname);
-				SetGlobalTransTarget(param1);
 				PrintToChat(param1, CHAT_PATTERN, "Door saved", name);
 			} else {
 				menu.GetItem(2, info, sizeof(info));
@@ -1829,3 +1809,11 @@ public int HandmodeMenu_ConfirmSave(Menu menu, MenuAction action, int param1, in
 #endif
 #endif
 //** End Hand mode section **//
+
+//** Helpers section **//
+stock void RemoveEntityRef(int index)
+{
+	if ((index = EntRefToEntIndex(index)) != -1)
+		AcceptEntityInput(index, "Kill");
+}
+//** End Helpers section **//

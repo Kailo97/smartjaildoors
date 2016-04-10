@@ -2,5 +2,11 @@ Add 'only open' mode setting for map.
 Add OnOpenDoor forward (In progress).
 Add OnCloseDoor forward (In progress).
 Add Lock/Unlock doors.
-Поддержку CS:S
-? Исправить %t на %T в функциях где нет клиента
+CS:S support (may be).
+L 03/08/2016 - 04:48:23: [SM] Native "CreateEntityByName" reported: Cannot create new entity when no map is running
+L 03/08/2016 - 04:48:23: [SM] Displaying call stack trace for plugin "smartjaildoors.smx":
+L 03/08/2016 - 04:48:23: [SM]   [0]  Line 731, smartjaildoors.sp::CreateButton()
+L 03/08/2016 - 04:48:23: [SM]   [1]  Line 786, smartjaildoors.sp::SpawnButtonsOnRoundStart()
+L 03/08/2016 - 04:48:11: [SM] Native "AcceptEntityInput" reported: Entity 789 (789) is not a CBaseEntity
+L 03/08/2016 - 04:48:11: [SM] Displaying call stack trace for plugin "smartjaildoors.smx":
+L 03/08/2016 - 04:48:11: [SM]   [0]  Line 155, smartjaildoors.sp::OnPluginEnd()
