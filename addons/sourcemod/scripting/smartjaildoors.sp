@@ -737,10 +737,11 @@ void SpawnButton(int buttonid)
 
 void CreateButton(int buttonid, const float origin[3])
 {
+	int button = -1;
 	if (GetEngineVersion() == Engine_CSGO)
-		int button = CreateEntityByName("prop_dynamic_glow");
+		button = CreateEntityByName("prop_dynamic_glow");
 	else
-		int button = CreateEntityByName("prop_dynamic");
+		button = CreateEntityByName("prop_dynamic");
 	DispatchKeyValue(button, "model", "models/kzmod/buttons/standing_button.mdl");
 	DispatchKeyValue(button, "solid", "6");
 	if (GetEngineVersion() == Engine_CSGO) {
