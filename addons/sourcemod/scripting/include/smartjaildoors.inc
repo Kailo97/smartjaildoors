@@ -18,9 +18,26 @@
 #endif
 #define _smartjaildoors_included_
 
-// Forward for when jail doors are opened. 
+/**
+ * Called when jail's doors are opened.
+ * 
+ * Will called for each door entity.
+ * 
+ * @param caller			Caller of input.
+ * @param activator			Activator of input.
+ * @noreturn
+ */
 forward void SJD_DoorsOpened(int caller, int activator);
-// Forward for when jail doors are closed.
+
+/**
+ * Called when jail's doors are closed.
+ * 
+ * Will called for each door entity.
+ * 
+ * @param caller			Caller of input.
+ * @param activator			Activator of input.
+ * @noreturn
+ */
 forward void SJD_DoorsClosed(int caller, int activator);
 
 /**
@@ -56,19 +73,21 @@ native void SJD_ToggleExDoors();
 /**
  * Check if exist doors config for said map.
  *
- * @param mapName    String with map name for check.
- * @return
+ * @param mapName			String with map name for check.
+ * @return					True if config exist, false otherwise.
  */
 native bool SJD_IsMapConfigured(const char[] mapName);
 
 /**
  * Check if exist doors config for current map.
+ * 
+ * @return			True if config exist, false otherwise.
  */
 stock bool SJD_IsCurrentMapConfigured()
 {
 	char mapName[64];
 	GetCurrentMap(mapName, sizeof(mapName));
-	
+
 	return SJD_IsMapConfigured(mapName);
 }
 

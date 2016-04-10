@@ -25,7 +25,7 @@
 #define CONFIRM_MENUS
 #define NEW_USE_LOGIC
 #define HAND_MODE
-//#define DOOR_HOOKS
+#define DOOR_HOOKS
 
 public Plugin myinfo =
 {
@@ -89,8 +89,10 @@ ConVar cv_sjd_buttons_glow;
 ConVar cv_sjd_buttons_glow_color;
 ConVar cv_sjd_buttons_filter;
 
+#if defined DOOR_HOOKS
 Handle fwd_doorsopened;
 Handle fwd_doorsclosed;
+#endif
 
 //Downloadable files
 char downloadablefiles[][] = {
@@ -135,8 +137,10 @@ public void OnPluginStart()
 	HookEvent("round_end", OnRoundEnd, EventHookMode_PostNoCopy);
 	HookEvent("player_death", OnPlayerDeath);
 	
+	#if defined DOOR_HOOKS
 	fwd_doorsopened = CreateGlobalForward("SJD_DoorsOpened", ET_Ignore, Param_Cell, Param_Cell);
 	fwd_doorsclosed = CreateGlobalForward("SJD_DoorsClosed", ET_Ignore, Param_Cell, Param_Cell);
+	#endif
 	
 	CreateTimer(0.1, ShowLookAt, _, TIMER_REPEAT);
 	
@@ -214,7 +218,7 @@ public void ConVarChanged(ConVar convar, const char[] oldValue, const char[] new
 }
 
 // MOVED TO: line 50
-/* stock void GetEntityName(int entity, char[] name, int maxlen)
+/* void GetEntityName(int entity, char[] name, int maxlen)
 {
 	GetEntPropString(entity, Prop_Data, "m_iName", name, maxlen);
 } */
@@ -399,7 +403,7 @@ public void RemoveDoorHooks(const char[] name, const char[] clsname)
 }
 #endif
 
-stock void GetAimOrigin(int client, float origin[3])
+void GetAimOrigin(int client, float origin[3])
 {
 	float pos[3], ang[3];
 	GetClientEyePosition(client, pos);
@@ -882,14 +886,14 @@ bool IsMapConfigured(const char[] mapName)
 	return true;
 }
 
-stock void EmitButtonSound(const float pos[3])
+void EmitButtonSound(const float pos[3])
 {
 	char sound[256];
 	cv_sjd_buttons_sound.GetString(sound, sizeof(sound));
 	EmitAmbientSound(sound, pos, _, SNDLEVEL_CONVO);
 }
 
-stock void SetGlowColor(int entity, const char[] color)
+void SetGlowColor(int entity, const char[] color)
 {
 	char colorbuffers[3][4];
 	ExplodeString(color, " ", colorbuffers, sizeof(colorbuffers), sizeof(colorbuffers[]));
@@ -901,79 +905,37 @@ stock void SetGlowColor(int entity, const char[] color)
 	AcceptEntityInput(entity, "SetGlowColor");
 }
 
-stock void SetDefaultGlowColor(int entity)
+void SetDefaultGlowColor(int entity)
 {
 	char color[12];
 	cv_sjd_buttons_glow_color.GetString(color, sizeof(color));
 	SetGlowColor(entity, color);
 }
 
-stock bool DoorClassValidation(const char[] clsname)
+bool DoorClassValidation(const char[] clsname)
 {
 	return (StrEqual("func_movelinear", clsname) || StrEqual("func_door", clsname) || StrEqual("func_door_rotating", clsname)
 			|| StrEqual("prop_door_rotating", clsname) || StrEqual("func_tracktrain", clsname) || StrEqual("func_breakable", clsname)
 			|| StrEqual("func_wall_toggle", clsname));
 }
 
-stock void DoorCmd(DoorHandler handler, const char[] name, const char[] clsname)
-{
-	DataPack Pack = new DataPack();
-	Pack.WriteCell(false);
-	Call_StartFunction(null, handler);
-	Call_PushString(name);
-	Call_PushString(clsname);
-	Call_PushCell(Pack);
-	Call_Finish();
-	delete Pack;
-}
-
-stock int FindFirstNamedEntity(const char[] name)
-{
-	char namebuffer[64];
-	int MaxEntities = GetMaxEntities();
-	for (int i = MaxClients+1; i < MaxEntities; i++)
-		if (IsValidEdict(i)) {
-			GetEntityName(i, namebuffer, sizeof(namebuffer));
-			if (StrEqual(name, namebuffer, false))
-				return i;
-		}
-
-	LogError("FindFirstNamedEntity don't found entity with \"%s\" name.", name);
-
-	return -1;
-}
-
-stock void GetClsnameByName(const char[] name, char[] clsname, int maxlength)
-{
-	char namebuffer[64];
-	int MaxEntities = GetMaxEntities();
-	for (int i = MaxClients+1; i < MaxEntities; i++)
-		if (IsValidEdict(i)) {
-			GetEntityName(i, namebuffer, sizeof(namebuffer));
-			if (StrEqual(name, namebuffer, false)) {
-				GetEntityClassname(i, clsname, maxlength);
-				break;
-			}
-		}
-}
-
 //** Door Hook **//
 #if defined DOOR_HOOKS
-stock void HookDoorOutput(const char[] name, const char[] output, EntityOutput callback)
+void HookDoorOutput(const char[] name, const char[] output, EntityOutput callback)
 {
 	int entity;
 	if ((entity = FindFirstNamedEntity(name)) != -1)
 		HookSingleEntityOutput(entity, output, callback);
 }
 
-stock void UnhookDoorOutput(const char[] name, const char[] output, EntityOutput callback)
+void UnhookDoorOutput(const char[] name, const char[] output, EntityOutput callback)
 {
 	int entity;
 	if ((entity = FindFirstNamedEntity(name)) != -1)
 		UnhookSingleEntityOutput(entity, output, callback);
 }
 
-stock void HookDoorOpen(const char[] name, const char[] clsname)
+void HookDoorOpen(const char[] name, const char[] clsname)
 {
 	if (StrEqual("func_door", clsname) || StrEqual("func_door_rotating", clsname) || StrEqual("prop_door_rotating", clsname))
 		HookDoorOutput(name, "OnOpen", OnDoorOpen);
@@ -994,7 +956,7 @@ public void OnDoorOpen(const char[] output, int caller, int activator, float del
 	Call_Finish();
 }
 
-stock void UnhookDoorOpen(const char[] name, const char[] clsname)
+void UnhookDoorOpen(const char[] name, const char[] clsname)
 {
 	if (StrEqual("func_door", clsname) || StrEqual("func_door_rotating", clsname) || StrEqual("prop_door_rotating", clsname))
 		UnhookDoorOutput(name, "OnOpen", OnDoorOpen);
@@ -1007,7 +969,7 @@ stock void UnhookDoorOpen(const char[] name, const char[] clsname)
 	// func_tracktrain
 }
 
-stock void HookDoorClose(const char[] name, const char[] clsname)
+void HookDoorClose(const char[] name, const char[] clsname)
 {
 	if (StrEqual("func_door", clsname) || StrEqual("func_door_rotating", clsname) || StrEqual("prop_door_rotating", clsname))
 		HookDoorOutput(name, "OnClose", OnDoorClose);
@@ -1027,7 +989,7 @@ public void OnDoorClose(const char[] output, int caller, int activator, float de
 	Call_Finish();
 }
 
-stock void UnhookDoorClose(const char[] name, const char[] clsname)
+void UnhookDoorClose(const char[] name, const char[] clsname)
 {
 	if (StrEqual("func_door", clsname) || StrEqual("func_door_rotating", clsname) || StrEqual("prop_door_rotating", clsname))
 		UnhookDoorOutput(name, "OnClose", OnDoorClose);
@@ -1039,13 +1001,13 @@ stock void UnhookDoorClose(const char[] name, const char[] clsname)
 	// func_breakable
 }
 
-stock void HookDoorAction(const char[] name, const char[] clsname)
+void HookDoorAction(const char[] name, const char[] clsname)
 {
 	HookDoorOpen(name, clsname);
 	HookDoorClose(name, clsname);
 }
 
-stock void HookDoorActionEx(const char[] name)
+void HookDoorActionEx(const char[] name)
 {
 	char clsname[64];
 	GetClsnameByName(name, clsname, sizeof(clsname));
@@ -1053,18 +1015,48 @@ stock void HookDoorActionEx(const char[] name)
 	HookDoorClose(name, clsname);
 }
 
-stock void UnhookDoorAction(const char[] name, const char[] clsname)
+void UnhookDoorAction(const char[] name, const char[] clsname)
 {
 	UnhookDoorOpen(name, clsname);
 	UnhookDoorClose(name, clsname);
 }
 
-stock void UnhookDoorActionEx(const char[] name)
+void UnhookDoorActionEx(const char[] name)
 {
 	char clsname[64];
 	GetClsnameByName(name, clsname, sizeof(clsname));
 	UnhookDoorOpen(name, clsname);
 	UnhookDoorClose(name, clsname);
+}
+
+void GetClsnameByName(const char[] name, char[] clsname, int maxlength)
+{
+	char namebuffer[64];
+	int MaxEntities = GetMaxEntities();
+	for (int i = MaxClients+1; i < MaxEntities; i++)
+		if (IsValidEdict(i)) {
+			GetEntityName(i, namebuffer, sizeof(namebuffer));
+			if (StrEqual(name, namebuffer, false)) {
+				GetEntityClassname(i, clsname, maxlength);
+				break;
+			}
+		}
+}
+
+int FindFirstNamedEntity(const char[] name)
+{
+	char namebuffer[64];
+	int MaxEntities = GetMaxEntities();
+	for (int i = MaxClients+1; i < MaxEntities; i++)
+		if (IsValidEdict(i)) {
+			GetEntityName(i, namebuffer, sizeof(namebuffer));
+			if (StrEqual(name, namebuffer, false))
+				return i;
+		}
+
+	LogError("FindFirstNamedEntity don't found entity with \"%s\" name.", name);
+
+	return -1;
 }
 #endif
 //** End Door Hook **//
@@ -1720,7 +1712,7 @@ public Action Command_Handmode(int client, int args)
 	return Plugin_Handled;
 }
 
-stock void ShowHandmodeMenu(int client, const char[] name, const char[] clsname, int amount)
+void ShowHandmodeMenu(int client, const char[] name, const char[] clsname, int amount)
 {
 	Menu menu = new Menu(HandmodeMenu);
 	char buffer[128];
@@ -1780,8 +1772,20 @@ public int HandmodeMenu(Menu menu, MenuAction action, int param1, int param2)
 	}
 }
 
+void DoorCmd(DoorHandler handler, const char[] name, const char[] clsname)
+{
+	DataPack Pack = new DataPack();
+	Pack.WriteCell(false);
+	Call_StartFunction(null, handler);
+	Call_PushString(name);
+	Call_PushString(clsname);
+	Call_PushCell(Pack);
+	Call_Finish();
+	delete Pack;
+}
+
 #if defined CONFIRM_MENUS
-stock void HandmodeMenu_ShowConfirmSave(int client, const char[] name, const char[] clsname, int amount)
+void HandmodeMenu_ShowConfirmSave(int client, const char[] name, const char[] clsname, int amount)
 {
 	Menu menu = new Menu(HandmodeMenu_ConfirmSave);
 	char buffer[128];
@@ -1823,7 +1827,7 @@ public int HandmodeMenu_ConfirmSave(Menu menu, MenuAction action, int param1, in
 //** End Hand mode section **//
 
 //** Helpers section **//
-stock void RemoveEntityRef(int index)
+void RemoveEntityRef(int index)
 {
 	if ((index = EntRefToEntIndex(index)) != -1)
 		AcceptEntityInput(index, "Kill");

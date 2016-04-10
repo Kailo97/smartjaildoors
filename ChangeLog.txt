@@ -2,6 +2,9 @@ v0.6.0-beta
 Re-edited translations.
 GetEntityName changed from function to macros.
 GhostButton re-edited.
+Added OnOpenDoor forward (data-bomb).
+Added OnCloseDoor forward (data-bomb).
+CS:S support (data-bomb).
 
 v0.5.2-beta
 Fixed bug, when u can use button in spectate mode.
