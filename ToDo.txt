@@ -1,5 +1,14 @@
 Add 'only open' mode setting for map.
 Add Lock/Unlock doors.
+Move map config to %sourcemod%/data folder.
+Remove cvars that used in CSGO from others game.
+Do global door's inputs hook (may be).
+Replace entity's indexes to entity's refs.
+Simplify use logic.
+Re-edit menu system.
+Add backlight in not CS:GO-engine games.
+Add prepared config for popular maps.
+Add dynamic array as buttons storage.
 L 03/08/2016 - 04:48:23: [SM] Native "CreateEntityByName" reported: Cannot create new entity when no map is running
 L 03/08/2016 - 04:48:23: [SM] Displaying call stack trace for plugin "smartjaildoors.smx":
 L 03/08/2016 - 04:48:23: [SM]   [0]  Line 731, smartjaildoors.sp::CreateButton()
