@@ -22,10 +22,11 @@
 #pragma semicolon 1
 
 //Compile defines
-#define CONFIRM_MENUS
-#define NEW_USE_LOGIC
-#define HAND_MODE
-#define DOOR_HOOKS
+#define CONFIRM_MENUS 1
+#define NEW_USE_LOGIC 1
+#define HAND_MODE 1
+#define DOOR_HOOKS 1
+#define MARK_DEBUG 1
 
 public Plugin myinfo =
 {
@@ -45,7 +46,8 @@ public Plugin myinfo =
 #define USE_AREA		15.0 // Distance from button top as radius sphere where u can use button
 #define BUTTON_USE_SOUND "buttons/button3.wav" // Default button use sound
 #define BUTTON_GLOW_COLOR "0 150 0" // Default color for glow - green
-#define BUTTON_CHOOSEN_GLOW_COLOR "255 0 0" // Defailt color for glow then choosen - red
+#define BUTTON_CHOOSEN_GLOW_COLOR "255 0 0" // Default color for glow then choosen - red
+#define GLOW_MODEL "sprites/glow.vmt"
 
 #define GetEntityName(%1,%2,%3) GetEntPropString(%1, Prop_Data, "m_iName", %2, %3)
 
@@ -76,13 +78,15 @@ DataPack g_MenuDataPasser[MAXPLAYERS + 1];
 int g_buttonindex[2048];
 int g_sjdclient;
 bool g_sjdlookat;
-int g_glowedbutton;
+int g_glowedbuttonid = -1;
 Menu g_SJDMenu2;
 int g_ghostbutton = INVALID_ENT_REFERENCE;
 bool g_ghostbuttonsave;
 float g_ghostbuttonpos[3];
 int g_oldButtons[MAXPLAYERS + 1];
 bool g_late;
+int g_glowmodel;
+Handle g_tetimer;
 
 ConVar cv_sjd_buttons_sound_enable;
 ConVar cv_sjd_buttons_sound;
@@ -202,7 +206,7 @@ public void ConVarChanged(ConVar convar, const char[] oldValue, const char[] new
 	if (convar == cv_sjd_buttons_glow) {
 		for (int i = 0; i < sizeof(g_buttonindex); i++)
 			if (g_buttonindex[i] != 0) {
-				if (g_buttonindex[i] != g_glowedbutton)
+				if (i != g_glowedbuttonid)
 					if (StringToInt(newValue)) {
 						SetDefaultGlowColor(g_buttonindex[i]);
 						AcceptEntityInput(g_buttonindex[i], "SetGlowEnabled");
@@ -216,7 +220,7 @@ public void ConVarChanged(ConVar convar, const char[] oldValue, const char[] new
 		if (cv_sjd_buttons_glow.BoolValue)
 			for (int i = 0; i < sizeof(g_buttonindex); i++)
 				if (g_buttonindex[i] != 0) {
-					if (g_buttonindex[i] != g_glowedbutton)
+					if (i != g_glowedbuttonid)
 						SetDefaultGlowColor(g_buttonindex[i]);
 				} else
 					break;
@@ -386,6 +390,9 @@ public void OnMapStart()
 
 	if (!IsSoundPrecached(BUTTON_USE_SOUND))
 		PrecacheSound(BUTTON_USE_SOUND);
+
+	if (GetEngineVersion() != Engine_CSGO)
+		g_glowmodel = PrecacheModel(GLOW_MODEL);
 }
 
 #if defined DOOR_HOOKS
@@ -1105,7 +1112,7 @@ void ShowSJDMenu2(int client)
 
 void CloseSJDMenu()
 {
-	DisableButtonGlow();
+	// DisableButtonGlow();
 	DisableLookAt();
 	DisableGhostButton();
 	g_sjdclient = 0;
@@ -1527,25 +1534,62 @@ void DisableLookAt()
 //** Glow button functions **//
 void EnableButtonGlow(int buttonid)
 {
-	if (g_glowedbutton != 0 || GetEngineVersion() != Engine_CSGO)
+	#if defined MARK_DEBUG
+	if (g_glowedbuttonid != -1) {
+		LogError("Try to mark button then another already marked (g_glowedbuttonid %d, buttonid %d).", g_glowedbuttonid, buttonid);
 		return;
-	
-	if (cv_sjd_buttons_glow.BoolValue)
-		SetGlowColor(g_buttonindex[buttonid], BUTTON_CHOOSEN_GLOW_COLOR);
-	else 
-		AcceptEntityInput(g_buttonindex[buttonid], "SetGlowEnabled");
-	g_glowedbutton = g_buttonindex[buttonid];
+	}
+	#endif
+
+	if (GetEngineVersion() == Engine_CSGO) {
+		if (cv_sjd_buttons_glow.BoolValue)
+			SetGlowColor(g_buttonindex[buttonid], BUTTON_CHOOSEN_GLOW_COLOR);
+		else
+			AcceptEntityInput(g_buttonindex[buttonid], "SetGlowEnabled");
+	} else {
+		// Set temp entity on top of button for mark it.
+		DataPack pack;
+		g_tetimer = CreateDataTimer(0.1, TETimer, pack, TIMER_REPEAT);
+		char mapname[64];
+		GetCurrentMap(mapname, sizeof(mapname));
+		g_kv.JumpToKey(mapname);
+		g_kv.JumpToKey("buttons");
+		char buffer[12];
+		IntToString(buttonid, buffer, sizeof(buffer));
+		g_kv.JumpToKey(buffer);
+		float pos[3];
+		g_kv.GetVector("pos", pos);
+		g_kv.Rewind();
+		pack.WriteCell(pos[0]);
+		pack.WriteCell(pos[1]);
+		pack.WriteCell(pos[2] + BUTTON_HEIGHT);
+	}
+	g_glowedbuttonid = buttonid;
+}
+
+public Action TETimer(Handle timer, DataPack pack)
+{
+	pack.Reset();
+	float pos[3];
+	pos[0] = pack.ReadCell();
+	pos[1] = pack.ReadCell();
+	pos[2] = pack.ReadCell();
+	TE_SetupGlowSprite(pos, g_glowmodel, 0.1, 0.5, 450);
+	TE_SendToAll();
+
+	return Plugin_Continue;
 }
 
 void DisableButtonGlow()
 {
-	if (g_glowedbutton != 0 && GetEngineVersion() == Engine_CSGO) {
+	if (GetEngineVersion() == Engine_CSGO)
 		if (cv_sjd_buttons_glow.BoolValue)
-			SetDefaultGlowColor(g_glowedbutton);
+			SetDefaultGlowColor(g_buttonindex[g_glowedbuttonid]);
 		else
-			AcceptEntityInput(g_glowedbutton, "SetGlowDisabled");
-		g_glowedbutton = 0;
-	}
+			AcceptEntityInput(g_buttonindex[g_glowedbuttonid], "SetGlowDisabled");
+	else
+		delete g_tetimer;
+	g_glowedbuttonid = -1;
 }
 //** End Glow button functions **//
 
