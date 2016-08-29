@@ -1849,9 +1849,9 @@ void HandmodeMenu_ShowConfirmSave(int client, const char[] name, const char[] cl
 	menu.AddItem(clsname, "", ITEMDRAW_IGNORE);
 	FormatEx(buffer, sizeof(buffer), "%d", amount);
 	menu.AddItem(buffer, "", ITEMDRAW_IGNORE);
-	FormatEx(buffer, sizeof(buffer), "%T", client, "Yes");
+	FormatEx(buffer, sizeof(buffer), "%T", "Yes", client);
 	menu.AddItem("yes", buffer);
-	FormatEx(buffer, sizeof(buffer), "%T", client, "No");
+	FormatEx(buffer, sizeof(buffer), "%T", "No", client);
 	menu.AddItem("no", buffer);
 	menu.Display(client, MENU_TIME_FOREVER);
 }
