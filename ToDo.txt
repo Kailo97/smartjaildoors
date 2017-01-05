@@ -11,6 +11,7 @@ Add prepared config for popular maps.
 Add dynamic array as buttons storage.
 Fix bug then button's ids have space between.
 Add MapMethod with statics
+Toggle for 'func_brush'
 L 03/08/2016 - 04:48:11: [SM] Native "AcceptEntityInput" reported: Entity 789 (789) is not a CBaseEntity
 L 03/08/2016 - 04:48:11: [SM] Displaying call stack trace for plugin "smartjaildoors.smx":
 L 03/08/2016 - 04:48:11: [SM]   [0]  Line 155, smartjaildoors.sp::OnPluginEnd()

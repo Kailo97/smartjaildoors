@@ -227,7 +227,7 @@ public void ConVarChanged(ConVar convar, const char[] oldValue, const char[] new
 	}
 }
 
-// MOVED TO: line 50
+// MOVED TO: line 52
 /* void GetEntityName(int entity, char[] name, int maxlen)
 {
 	GetEntPropString(entity, Prop_Data, "m_iName", name, maxlen);
@@ -357,6 +357,11 @@ public void ToggleDoor(const char[] name, const char[] clsname, any data)
 		Pack.Reset();
 		if (!Pack.ReadCell())
 			PrintToChat(g_sjdclient, CHAT_PATTERN, "Can not toggle", "Invalid entity class for toggle", clsname);
+	} else if (StrEqual("func_brush", clsname)) {
+		// Can't toggle 'func_brush' entity class.
+		Pack.Reset();
+		if (!Pack.ReadCell())
+			PrintToChat(g_sjdclient, CHAT_PATTERN, "Can not toggle", "Invalid entity class for toggle", clsname);
 	}
 }
 
@@ -378,6 +383,9 @@ public void ToggleDoorEx(const char[] name, const char[] clsname)
 		InputToDoor(name, clsname, "StartForward");
 	} else if (StrEqual("func_breakable", clsname)) {
 		InputToDoor(name, clsname, "Break");
+	} else if (StrEqual("func_brush", clsname)) {
+		// TODO: Toggle for 'func_brush'
+		InputToDoor(name, clsname, "Disable");
 	}
 }
 
@@ -854,6 +862,8 @@ public void OpenDoor(const char[] name, const char[] clsname, any data)
 		Pack.Reset();
 		if (!Pack.ReadCell())
 			PrintToChat(g_sjdclient, CHAT_PATTERN, "Can not open", "Invalid entity class for open", clsname);
+	} else if (StrEqual("func_brush", clsname)) {
+		InputToDoor(name, clsname, "Disable");
 	}
 }
 
@@ -887,6 +897,8 @@ public void CloseDoor(const char[] name, const char[] clsname, any data)
 		Pack.Reset();
 		if (!Pack.ReadCell())
 			PrintToChat(g_sjdclient, CHAT_PATTERN, "Can not close", "Invalid entity class for close", clsname);
+	} else if (StrEqual("func_brush", clsname)) {
+		InputToDoor(name, clsname, "Enable");
 	}
 }
 
@@ -934,7 +946,7 @@ bool DoorClassValidation(const char[] clsname)
 {
 	return (StrEqual("func_movelinear", clsname) || StrEqual("func_door", clsname) || StrEqual("func_door_rotating", clsname)
 			|| StrEqual("prop_door_rotating", clsname) || StrEqual("func_tracktrain", clsname) || StrEqual("func_breakable", clsname)
-			|| StrEqual("func_wall_toggle", clsname));
+			|| StrEqual("func_wall_toggle", clsname) || StrEqual("func_brush", clsname));
 }
 
 //** Door Hook **//
@@ -964,6 +976,7 @@ void HookDoorOpen(const char[] name, const char[] clsname)
 	// Can't hook:
 	// func_wall_toggle
 	// func_tracktrain
+	// func_brush
 }
 
 public void OnDoorOpen(const char[] output, int caller, int activator, float delay)
@@ -985,6 +998,7 @@ void UnhookDoorOpen(const char[] name, const char[] clsname)
 	// Can't hook:
 	// func_wall_toggle
 	// func_tracktrain
+	// func_brush
 }
 
 void HookDoorClose(const char[] name, const char[] clsname)
@@ -997,6 +1011,7 @@ void HookDoorClose(const char[] name, const char[] clsname)
 	// func_wall_toggle
 	// func_tracktrain
 	// func_breakable
+	// func_brush
 }
 
 public void OnDoorClose(const char[] output, int caller, int activator, float delay)
@@ -1017,6 +1032,7 @@ void UnhookDoorClose(const char[] name, const char[] clsname)
 	// func_wall_toggle
 	// func_tracktrain
 	// func_breakable
+	// func_brush
 }
 
 void HookDoorAction(const char[] name, const char[] clsname)
@@ -1818,7 +1834,7 @@ public int HandmodeMenu(Menu menu, MenuAction action, int param1, int param2)
 				#else
 				SaveDoor(name, clsname);
 				PrintToChat(param1, CHAT_PATTERN, "Door saved", name);
-				#endif
+				#endif // CONFIRM_MENUS
 			}
 		}
 		//case MenuAction_Cancel:
@@ -1877,8 +1893,8 @@ public int HandmodeMenu_ConfirmSave(Menu menu, MenuAction action, int param1, in
 			delete menu;
 	}
 }
-#endif
-#endif
+#endif // CONFIRM_MENUS
+#endif // HAND_MODE
 //** End Hand mode section **//
 
 //** Helpers section **//

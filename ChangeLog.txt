@@ -6,6 +6,7 @@ Added OnOpenDoor forward (data-bomb).
 Added OnCloseDoor forward (data-bomb).
 CS:S support (data-bomb).
 Fixed error on non-late loading.
+Added support 'func_brush' entity class.
 
 v0.5.2-beta
 Fixed bug, when u can use button in spectate mode.
