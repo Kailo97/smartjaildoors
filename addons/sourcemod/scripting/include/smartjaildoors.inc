@@ -41,6 +41,16 @@ forward void SJD_DoorsOpened(int caller, int activator);
 forward void SJD_DoorsClosed(int caller, int activator);
 
 /**
+ * Called when button pressed.
+ * 
+ * 
+ * @param caller			Caller of input.
+ * @param activator			Activator of input.
+ * @noreturn
+ */
+forward void SJD_ButtonPressed(int client);
+
+/**
  * Open jail's doors on current map saved in Smart Jail Doors config.
  *
  * @noreturn

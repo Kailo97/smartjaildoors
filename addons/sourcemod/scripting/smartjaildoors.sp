@@ -98,6 +98,7 @@ ConVar cv_sjd_buttons_filter;
 Handle fwd_doorsopened;
 Handle fwd_doorsclosed;
 #endif
+Handle fwd_buttonpressed;
 
 //Downloadable files
 char downloadablefiles[][] = {
@@ -148,6 +149,7 @@ public void OnPluginStart()
 	fwd_doorsopened = CreateGlobalForward("SJD_DoorsOpened", ET_Ignore, Param_Cell, Param_Cell);
 	fwd_doorsclosed = CreateGlobalForward("SJD_DoorsClosed", ET_Ignore, Param_Cell, Param_Cell);
 	#endif
+	fwd_buttonpressed = CreateGlobalForward("SJD_ButtonPressed", ET_Ignore, Param_Cell);
 	
 	CreateTimer(0.1, ShowLookAt, _, TIMER_REPEAT);
 	
@@ -477,6 +479,9 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 					for (int i2 = 0; i2 < counter; i2++)
 						if (DistanceBetweenPoints(buttonPos[i2], temp_pos) <=  USE_AREA) {
 							used = true;
+							Call_StartForward(fwd_buttonpressed);
+							Call_PushCell(client);
+							Call_Finish();
 							ToggleExDoorsOnMap();
 							if (cv_sjd_buttons_sound_enable.BoolValue)
 								EmitButtonSound(buttonPos[i2]);
@@ -534,6 +539,9 @@ public Action OnPlayerRunCmd(int client, int &f_buttons, int &impulse, float vel
 							float origin[3];
 							GetClientEyePosition(client, origin);
 							if (DistanceBetweenPoints(buttonpos, origin) <= BUTTON_USE) {
+								Call_StartForward(fwd_buttonpressed);
+								Call_PushCell(client);
+								Call_Finish();
 								ToggleExDoorsOnMap();
 								if (cv_sjd_buttons_sound_enable.BoolValue)
 									EmitButtonSound(buttonpos);
