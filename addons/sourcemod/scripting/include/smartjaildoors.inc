@@ -101,7 +101,7 @@ stock bool SJD_IsCurrentMapConfigured()
 	return SJD_IsMapConfigured(mapName);
 }
 
-public SharedPlugin:__pl_smartjaildoors = 
+public SharedPlugin __pl_smartjaildoors = 
 {
 	name = "smartjaildoors",
 	file = "smartjaildoors.smx",
