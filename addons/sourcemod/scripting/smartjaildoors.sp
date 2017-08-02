@@ -26,7 +26,7 @@
 #define NEW_USE_LOGIC 1
 #define HAND_MODE 1
 #define DOOR_HOOKS 1
-#define MARK_DEBUG 1
+#define MARK_DEBUG 0
 
 public Plugin myinfo =
 {
@@ -1096,7 +1096,7 @@ int FindFirstNamedEntity(const char[] name)
 				return i;
 		}
 
-	LogError("FindFirstNamedEntity don't found entity with \"%s\" name.", name);
+	// LogError("FindFirstNamedEntity don't found entity with \"%s\" name.", name);
 
 	return -1;
 }

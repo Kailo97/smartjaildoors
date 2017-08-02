@@ -43,9 +43,7 @@ forward void SJD_DoorsClosed(int caller, int activator);
 /**
  * Called when button pressed.
  * 
- * 
- * @param caller			Caller of input.
- * @param activator			Activator of input.
+ * @param client			Client who pressed the button.
  * @noreturn
  */
 forward void SJD_ButtonPressed(int client);
